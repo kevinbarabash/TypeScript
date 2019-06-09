@@ -11676,7 +11676,7 @@ namespace ts {
         }
 
         function checkTypeRelatedToAndOptionallyElaborate(source: Type, target: Type, relation: Map<RelationComparisonResult>, errorNode: Node | undefined, expr: Expression | undefined, headMessage?: DiagnosticMessage, containingMessageChain?: () => DiagnosticMessageChain | undefined): boolean {
-            if (isTypeRelatedTo(source, target, relation, errorNode)) return true;
+            if (isTypeRelatedTo(source, target, relation, expr)) return true;
             if (!errorNode || !elaborateError(expr, source, target, relation, headMessage)) {
                 return checkTypeRelatedTo(source, target, relation, errorNode, headMessage, containingMessageChain);
             }
@@ -12330,7 +12330,7 @@ namespace ts {
                 return true;
             }
             if (source.flags & TypeFlags.Object && target.flags & TypeFlags.Object) {
-                const related = relation.get(getRelationKey(source, target, relation));
+                const related = relation.get(getRelationKey(source, target, relation, errorNode));
                 if (related !== undefined) {
                     return related === RelationComparisonResult.Succeeded;
                 }
@@ -13023,7 +13023,7 @@ namespace ts {
                 if (overflow) {
                     return Ternary.False;
                 }
-                const id = getRelationKey(source, target, relation);
+                const id = getRelationKey(source, target, relation, options.errorNode);
                 const related = relation.get(id);
                 if (related !== undefined) {
                     if (reportErrors && related === RelationComparisonResult.Failed) {
@@ -13324,6 +13324,10 @@ namespace ts {
                                 // Array<> only takes a single type parameter
                                 variances = [VarianceFlags.Covariant];
                             }
+                        } else if (errorNode && isArrayLiteralExpression(errorNode)) {
+                            // TODO: check that errorNode is child of a function call
+                            // Array<> only takes a single type parameter
+                            variances = [VarianceFlags.Covariant];
                         }
                         
                         // const variances = [VarianceFlags.Covariant];
@@ -14186,7 +14190,7 @@ namespace ts {
          * To improve caching, the relation key for two generic types uses the target's id plus ids of the type parameters.
          * For other cases, the types ids are used.
          */
-        function getRelationKey(source: Type, target: Type, relation: Map<RelationComparisonResult>) {
+        function getRelationKey(source: Type, target: Type, relation: Map<RelationComparisonResult>, errorNode?: Node) {
             if (relation === identityRelation && source.id > target.id) {
                 const temp = source;
                 source = target;
@@ -14195,6 +14199,14 @@ namespace ts {
             if (isTypeReferenceWithGenericArguments(source) && isTypeReferenceWithGenericArguments(target)) {
                 const typeParameters: Type[] = [];
                 return getTypeReferenceId(<TypeReference>source, typeParameters) + "," + getTypeReferenceId(<TypeReference>target, typeParameters);
+            }
+            // We differentiate array literal types from normal array types so that
+            // their type relations can be differentiated.  In particular we want to
+            // assignment of array literals to be covariant and assignment of other
+            // arrays to be invariant.
+            // TODO: do the same for object literals
+            if (errorNode && errorNode.kind === SyntaxKind.ArrayLiteralExpression) {
+                return source.id + "," + target.id + ":Lit";
             }
             return source.id + "," + target.id;
         }
