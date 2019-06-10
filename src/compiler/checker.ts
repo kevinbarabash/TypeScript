@@ -11676,6 +11676,10 @@ namespace ts {
         }
 
         function checkTypeRelatedToAndOptionallyElaborate(source: Type, target: Type, relation: Map<RelationComparisonResult>, errorNode: Node | undefined, expr: Expression | undefined, headMessage?: DiagnosticMessage, containingMessageChain?: () => DiagnosticMessageChain | undefined): boolean {
+            // TODO: pass both errorNode and expr since each of them are useful in different contexts
+            // for function calls, expr is the arg
+            // for variable declarations, expr is the right-hand-side expression which is usually enough
+            // but when checking properties we need to know if the left-hand-side is readonly
             if (isTypeRelatedTo(source, target, relation, expr)) return true;
             if (!errorNode || !elaborateError(expr, source, target, relation, headMessage)) {
                 return checkTypeRelatedTo(source, target, relation, errorNode, headMessage, containingMessageChain);
@@ -12507,6 +12511,9 @@ namespace ts {
                 headMessage?: DiagnosticMessage,
                 isIntersectionConstituent?: boolean,
                 errorNode?: Node,
+                isProperty?: boolean,
+                targetIsReadonly?: boolean,
+                sourceIsObjectLiteral?: boolean,
             };
 
             /**
@@ -12613,6 +12620,11 @@ namespace ts {
                 }
                 else {
                     if (target.flags & TypeFlags.Union) {
+                        // If the target is a union and the source isn't but this check is for
+                        // a property return false
+                        if (options.isProperty && !options.targetIsReadonly && !options.sourceIsObjectLiteral) {
+                            return Ternary.False;
+                        }
                         result = typeRelatedToSomeType(getRegularTypeOfObjectLiteral(source), <UnionType>target, reportErrors && !(source.flags & TypeFlags.Primitive) && !(target.flags & TypeFlags.Primitive));
                         if (result && isPerformingExcessPropertyChecks) {
                             // Validate against excess props using the original `source`
@@ -13572,7 +13584,8 @@ namespace ts {
                 return result || properties;
             }
 
-            function isPropertySymbolTypeRelated(sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean): Ternary {
+            function isPropertySymbolTypeRelated(sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean, targetIsReadonly: boolean, sourceIsObjectLiteral: boolean): Ternary {
+                const relatedToOptions: RelatedToOptions = {isProperty: true, targetIsReadonly, sourceIsObjectLiteral};
                 const targetIsOptional = strictNullChecks && !!(getCheckFlags(targetProp) & CheckFlags.Partial);
                 const source = getTypeOfSourceProperty(sourceProp);
                 if (getCheckFlags(targetProp) & CheckFlags.DeferredType && !getSymbolLinks(targetProp).type) {
@@ -13588,7 +13601,7 @@ namespace ts {
                         if (!unionParent) {
                             if (!related) {
                                 // Can't assign to a target individually - have to fallback to assigning to the _whole_ intersection (which forces normalization)
-                                return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors);
+                                return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors, relatedToOptions);
                             }
                             result &= related;
                         }
@@ -13606,12 +13619,12 @@ namespace ts {
                         // If it turns out this is too costly too often, we can replicate the error handling logic within
                         // typeRelatedToSomeType without the discriminatable type branch (as that requires a manifest union
                         // type on which to hand discriminable properties, which we are expressly trying to avoid here)
-                        return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors);
+                        return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors, relatedToOptions);
                     }
                     return result;
                 }
                 else {
-                    return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors);
+                    return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors, relatedToOptions);
                 }
             }
 
@@ -13657,7 +13670,10 @@ namespace ts {
                     return Ternary.False;
                 }
                 // If the target comes from a partial union prop, allow `undefined` in the target type
-                const related = isPropertySymbolTypeRelated(sourceProp, targetProp, getTypeOfSourceProperty, reportErrors);
+                const targetIsReadonly = !!(getObjectFlags(target) & ObjectFlags.Mapped && 
+                    (<MappedType>target).declaration.readonlyToken);
+                const sourceIsObjectLiteral = !!(getObjectFlags(source) & ObjectFlags.ObjectLiteral);
+                const related = isPropertySymbolTypeRelated(sourceProp, targetProp, getTypeOfSourceProperty, reportErrors, targetIsReadonly, sourceIsObjectLiteral);
                 if (!related) {
                     if (reportErrors) {
                         reportError(Diagnostics.Types_of_property_0_are_incompatible, symbolToString(targetProp));
