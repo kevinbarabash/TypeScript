@@ -80,6 +80,8 @@ namespace ts {
         const strictFunctionTypes = getStrictOptionValue(compilerOptions, "strictFunctionTypes");
         const strictBindCallApply = getStrictOptionValue(compilerOptions, "strictBindCallApply");
         const strictPropertyInitialization = getStrictOptionValue(compilerOptions, "strictPropertyInitialization");
+        const strictAliasAssigment = getStrictOptionValue(compilerOptions, "strictAliasAssignment");
+        const strictAliasArgs = getStrictOptionValue(compilerOptions, "strictAliasArgs");
         const noImplicitAny = getStrictOptionValue(compilerOptions, "noImplicitAny");
         const noImplicitThis = getStrictOptionValue(compilerOptions, "noImplicitThis");
         const keyofStringsOnly = !!compilerOptions.keyofStringsOnly;
@@ -11680,7 +11682,7 @@ namespace ts {
             // for function calls, expr is the arg
             // for variable declarations, expr is the right-hand-side expression which is usually enough
             // but when checking properties we need to know if the left-hand-side is readonly
-            if (isTypeRelatedTo(source, target, relation, expr)) return true;
+            if (isTypeRelatedTo(source, target, relation, errorNode)) return true;
             if (!errorNode || !elaborateError(expr, source, target, relation, headMessage)) {
                 return checkTypeRelatedTo(source, target, relation, errorNode, headMessage, containingMessageChain);
             }
@@ -13364,7 +13366,7 @@ namespace ts {
                     if (source.flags & (TypeFlags.Object | TypeFlags.Intersection) && target.flags & TypeFlags.Object) {
                         // Report structural errors only if we haven't reported any errors yet
                         const reportStructuralErrors = reportErrors && errorInfo === saveErrorInfo && !sourceIsPrimitive;
-                        result = propertiesRelatedTo(source, target, reportStructuralErrors, /*excludedProperties*/ undefined);
+                        result = propertiesRelatedTo(source, target, reportStructuralErrors, /*excludedProperties*/ undefined, options);
                         if (result) {
                             result &= signaturesRelatedTo(source, target, SignatureKind.Call, reportStructuralErrors);
                             if (result) {
@@ -13584,8 +13586,13 @@ namespace ts {
                 return result || properties;
             }
 
-            function isPropertySymbolTypeRelated(sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean, targetIsReadonly: boolean, sourceIsObjectLiteral: boolean): Ternary {
-                const relatedToOptions: RelatedToOptions = {isProperty: true, targetIsReadonly, sourceIsObjectLiteral};
+            function isPropertySymbolTypeRelated(sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean, targetIsReadonly: boolean, sourceIsObjectLiteral: boolean, options: RelatedToOptions = {}): Ternary {
+                const relatedToOptions: RelatedToOptions = {
+                    ...options,
+                    targetIsReadonly,
+                    sourceIsObjectLiteral,
+                    isProperty: true,
+                };
                 const targetIsOptional = strictNullChecks && !!(getCheckFlags(targetProp) & CheckFlags.Partial);
                 const source = getTypeOfSourceProperty(sourceProp);
                 if (getCheckFlags(targetProp) & CheckFlags.DeferredType && !getSymbolLinks(targetProp).type) {
@@ -13628,7 +13635,7 @@ namespace ts {
                 }
             }
 
-            function propertyRelatedTo(source: Type, target: Type, sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean): Ternary {
+            function propertyRelatedTo(source: Type, target: Type, sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean, options: RelatedToOptions = {}): Ternary {
                 const sourcePropFlags = getDeclarationModifierFlagsFromSymbol(sourceProp);
                 const targetPropFlags = getDeclarationModifierFlagsFromSymbol(targetProp);
                 if (sourcePropFlags & ModifierFlags.Private || targetPropFlags & ModifierFlags.Private) {
@@ -13673,7 +13680,7 @@ namespace ts {
                 const targetIsReadonly = !!(getObjectFlags(target) & ObjectFlags.Mapped && 
                     (<MappedType>target).declaration.readonlyToken);
                 const sourceIsObjectLiteral = !!(getObjectFlags(source) & ObjectFlags.ObjectLiteral);
-                const related = isPropertySymbolTypeRelated(sourceProp, targetProp, getTypeOfSourceProperty, reportErrors, targetIsReadonly, sourceIsObjectLiteral);
+                const related = isPropertySymbolTypeRelated(sourceProp, targetProp, getTypeOfSourceProperty, reportErrors, targetIsReadonly, sourceIsObjectLiteral, options);
                 if (!related) {
                     if (reportErrors) {
                         reportError(Diagnostics.Types_of_property_0_are_incompatible, symbolToString(targetProp));
@@ -13698,9 +13705,24 @@ namespace ts {
                 return related;
             }
 
-            function propertiesRelatedTo(source: Type, target: Type, reportErrors: boolean, excludedProperties: UnderscoreEscapedMap<true> | undefined): Ternary {
+            function propertiesRelatedTo(source: Type, target: Type, reportErrors: boolean, excludedProperties: UnderscoreEscapedMap<true> | undefined, options: RelatedToOptions = {}): Ternary {
                 if (relation === identityRelation) {
                     return propertiesIdenticalTo(source, target, excludedProperties);
+                } else if (options.errorNode && options.errorNode.kind !== SyntaxKind.ClassDeclaration && options.errorNode.kind !== SyntaxKind.ObjectLiteralExpression) {
+                    const {errorNode} = options;
+                    if (target.aliasSymbol && target.aliasSymbol.escapedName === "Readonly") {
+                        // If the target is Readonly treat the source as covariant
+                    } else if (isVariableDeclaration(errorNode) && errorNode.initializer && errorNode.initializer.kind !== SyntaxKind.ObjectLiteralExpression) {
+                        debugger;
+                        // Invariant when assigning an alias as a source
+                        const isCovariant = propertiesIdenticalTo(source, target, excludedProperties);
+                        const isContravariant = propertiesIdenticalTo(target, source, excludedProperties);
+                        if (isCovariant === Ternary.True && isContravariant === Ternary.True) {
+                            return Ternary.True;
+                        } else {
+                            return Ternary.False;
+                        }
+                    }
                 }
                 const requireOptionalProperties = relation === subtypeRelation && !isObjectLiteralType(source) && !isEmptyArrayLiteralType(source) && !isTupleType(source);
                 const unmatchedProperty = getUnmatchedProperty(source, target, requireOptionalProperties, /*matchDiscriminantProperties*/ false);
@@ -13785,7 +13807,7 @@ namespace ts {
                     if (!(targetProp.flags & SymbolFlags.Prototype)) {
                         const sourceProp = getPropertyOfType(source, targetProp.escapedName);
                         if (sourceProp && sourceProp !== targetProp) {
-                            const related = propertyRelatedTo(source, target, sourceProp, targetProp, getTypeOfSymbol, reportErrors);
+                            const related = propertyRelatedTo(source, target, sourceProp, targetProp, getTypeOfSymbol, reportErrors, options);
                             if (!related) {
                                 return Ternary.False;
                             }
@@ -28141,7 +28163,7 @@ namespace ts {
                     }
                     else {
                         // Report static side error only when instance type is assignable
-                        checkTypeAssignableTo(staticType, getTypeWithoutSignatures(staticBaseType), node.name || node,
+                        checkTypeAssignableTo(staticType, getTypeWithoutSignatures(staticBaseType), node, // node.name || node,
                             Diagnostics.Class_static_side_0_incorrectly_extends_base_class_static_side_1);
                     }
                     if (baseConstructorType.flags & TypeFlags.TypeVariable && !isMixinConstructorType(staticType)) {

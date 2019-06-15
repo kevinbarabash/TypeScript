@@ -31,10 +31,19 @@ const readonlyMixedNode: Readonly<MixedNode> = numNode; // this is okay
 
 const mixedNodeFunc = (node: MixedNode) => {};
 mixedNodeFunc(goodMixedNode);
-mixedNodeFunc(numNode);
+mixedNodeFunc(numNode); // error, mixedNodeFunc could mutate numNode to set "id" to be a string
 mixedNodeFunc({ id: 5 });
 
 const readonlyMixedNodeFunc = (node: Readonly<MixedNode>) => {};
 readonlyMixedNodeFunc(goodMixedNode);
 readonlyMixedNodeFunc(numNode);
 readonlyMixedNodeFunc({ id: 5 });
+
+type CatNode = { animal: Cat };
+type AnimalNode = { animal: Animal };
+const catNode: CatNode = { animal: new Cat };
+const goodAnimalNode: AnimalNode = { animal: new Cat };
+const badAnimalNode: AnimalNode = catNode; // error
+
+// const a: number = 5;
+// const b: number | string = a;
