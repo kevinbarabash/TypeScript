@@ -5002,5 +5002,10 @@
     "Classes may not have a field named 'constructor'.": {
         "category": "Error",
         "code": 18006
+    },
+
+    "Enable strict checking of assignments.": {
+        "category": "Message",
+        "code": 20000
     }
 }

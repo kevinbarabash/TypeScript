@@ -80,6 +80,7 @@ namespace ts {
         const strictFunctionTypes = getStrictOptionValue(compilerOptions, "strictFunctionTypes");
         const strictBindCallApply = getStrictOptionValue(compilerOptions, "strictBindCallApply");
         const strictPropertyInitialization = getStrictOptionValue(compilerOptions, "strictPropertyInitialization");
+        const strictAssignment = !!compilerOptions.strictAssignment;
         const noImplicitAny = getStrictOptionValue(compilerOptions, "noImplicitAny");
         const noImplicitThis = getStrictOptionValue(compilerOptions, "noImplicitThis");
         const keyofStringsOnly = !!compilerOptions.keyofStringsOnly;
@@ -11664,7 +11665,7 @@ namespace ts {
         }
 
         function checkTypeAssignableTo(source: Type, target: Type, errorNode: Node | undefined, headMessage?: DiagnosticMessage, containingMessageChain?: () => DiagnosticMessageChain | undefined, errorOutputObject?: { error?: Diagnostic }): boolean {
-            return checkTypeRelatedTo(source, target, assignableRelation, errorNode, headMessage, containingMessageChain, errorOutputObject);
+            return checkTypeRelatedTo(source, target, assignableRelation, errorNode, /*variance*/ undefined, headMessage, containingMessageChain, errorOutputObject);
         }
 
         /**
@@ -11672,13 +11673,21 @@ namespace ts {
          * attempt to issue more specific errors on, for example, specific object literal properties or tuple members.
          */
         function checkTypeAssignableToAndOptionallyElaborate(source: Type, target: Type, errorNode: Node | undefined, expr: Expression | undefined, headMessage?: DiagnosticMessage, containingMessageChain?: () => DiagnosticMessageChain | undefined): boolean {
-            return checkTypeRelatedToAndOptionallyElaborate(source, target, assignableRelation, errorNode, expr, headMessage, containingMessageChain);
+            const name = (target.aliasSymbol && target.aliasSymbol.escapedName) ||
+                (target.symbol && target.symbol.escapedName);
+            const isTargetReadonly = name === "Readonly" || name === "ReadonlyArray";
+            // We determine what the override variance should be.  If the source is an identifier and if the target
+            // is readonly, then we force the assignment to be invariant.
+            const assignmentVariance = strictAssignment && expr && isIdentifier(expr) && !isTargetReadonly
+                ? VarianceFlags.Invariant
+                : undefined;
+            return checkTypeRelatedToAndOptionallyElaborate(source, target, assignableRelation, errorNode, expr, headMessage, containingMessageChain, assignmentVariance);
         }
 
-        function checkTypeRelatedToAndOptionallyElaborate(source: Type, target: Type, relation: Map<RelationComparisonResult>, errorNode: Node | undefined, expr: Expression | undefined, headMessage?: DiagnosticMessage, containingMessageChain?: () => DiagnosticMessageChain | undefined): boolean {
-            if (isTypeRelatedTo(source, target, relation)) return true;
+        function checkTypeRelatedToAndOptionallyElaborate(source: Type, target: Type, relation: Map<RelationComparisonResult>, errorNode: Node | undefined, expr: Expression | undefined, headMessage?: DiagnosticMessage, containingMessageChain?: () => DiagnosticMessageChain | undefined, assignmentVariance?: VarianceFlags): boolean {
+            if (isTypeRelatedTo(source, target, relation, assignmentVariance)) return true;
             if (!errorNode || !elaborateError(expr, source, target, relation, headMessage)) {
-                return checkTypeRelatedTo(source, target, relation, errorNode, headMessage, containingMessageChain);
+                return checkTypeRelatedTo(source, target, relation, errorNode, assignmentVariance, headMessage, containingMessageChain);
             }
             return false;
         }
@@ -11762,7 +11771,7 @@ namespace ts {
                     return elaborated;
                 }
                 const resultObj: { error?: Diagnostic } = {};
-                checkTypeRelatedTo(sourceReturn, targetReturn, relation, returnExpression, /*message*/ undefined, /*chain*/ undefined, resultObj);
+                checkTypeRelatedTo(sourceReturn, targetReturn, relation, returnExpression, /*variance*/ undefined, /*message*/ undefined, /*chain*/ undefined, resultObj);
                 if (resultObj.error) {
                     if (target.symbol && length(target.symbol.declarations)) {
                         addRelatedInfo(resultObj.error, createDiagnosticForNode(
@@ -11800,10 +11809,10 @@ namespace ts {
                         const resultObj: { error?: Diagnostic } = {};
                         // Use the expression type, if available
                         const specificSource = next ? checkExpressionForMutableLocation(next, CheckMode.Normal, sourcePropType) : sourcePropType;
-                        const result = checkTypeRelatedTo(specificSource, targetPropType, relation, prop, errorMessage, /*containingChain*/ undefined, resultObj);
+                        const result = checkTypeRelatedTo(specificSource, targetPropType, relation, prop, /*variance*/ undefined, errorMessage, /*containingChain*/ undefined, resultObj);
                         if (result && specificSource !== sourcePropType) {
                             // If for whatever reason the expression type doesn't yield an error, make sure we still issue an error on the sourcePropType
-                            checkTypeRelatedTo(sourcePropType, targetPropType, relation, prop, errorMessage, /*containingChain*/ undefined, resultObj);
+                            checkTypeRelatedTo(sourcePropType, targetPropType, relation, prop, /*variance*/ undefined, errorMessage, /*containingChain*/ undefined, resultObj);
                         }
                         if (resultObj.error) {
                             const reportedDiag = resultObj.error;
@@ -12021,7 +12030,7 @@ namespace ts {
          * If one needs to check both directions for comparability, use a second call to this function or 'isTypeComparableTo'.
          */
         function checkTypeComparableTo(source: Type, target: Type, errorNode: Node, headMessage?: DiagnosticMessage, containingMessageChain?: () => DiagnosticMessageChain | undefined): boolean {
-            return checkTypeRelatedTo(source, target, comparableRelation, errorNode, headMessage, containingMessageChain);
+            return checkTypeRelatedTo(source, target, comparableRelation, errorNode, /*variance*/ undefined, headMessage, containingMessageChain);
         }
 
         function isSignatureAssignableTo(source: Signature,
@@ -12317,7 +12326,7 @@ namespace ts {
             return false;
         }
 
-        function isTypeRelatedTo(source: Type, target: Type, relation: Map<RelationComparisonResult>) {
+        function isTypeRelatedTo(source: Type, target: Type, relation: Map<RelationComparisonResult>, assignmentVariance?: VarianceFlags) {
             if (isFreshLiteralType(source)) {
                 source = (<FreshableType>source).regularType;
             }
@@ -12329,14 +12338,18 @@ namespace ts {
                 relation !== identityRelation && isSimpleTypeRelatedTo(source, target, relation)) {
                 return true;
             }
-            if (source.flags & TypeFlags.Object && target.flags & TypeFlags.Object) {
-                const related = relation.get(getRelationKey(source, target, relation));
-                if (related !== undefined) {
-                    return related === RelationComparisonResult.Succeeded;
+            // We can't use the relation keys with strictAssignment b/c we always need to check properties
+            // on objects.
+            if (!strictAssignment) {
+                if (source.flags & TypeFlags.Object && target.flags & TypeFlags.Object) {
+                    const related = relation.get(getRelationKey(source, target, relation, assignmentVariance));
+                    if (related !== undefined) {
+                        return related === RelationComparisonResult.Succeeded;
+                    }
                 }
             }
             if (source.flags & TypeFlags.StructuredOrInstantiable || target.flags & TypeFlags.StructuredOrInstantiable) {
-                return checkTypeRelatedTo(source, target, relation, /*errorNode*/ undefined);
+                return checkTypeRelatedTo(source, target, relation, /*errorNode*/ undefined, assignmentVariance);
             }
             return false;
         }
@@ -12360,6 +12373,7 @@ namespace ts {
             target: Type,
             relation: Map<RelationComparisonResult>,
             errorNode: Node | undefined,
+            assignmentVariance?: VarianceFlags,
             headMessage?: DiagnosticMessage,
             containingMessageChain?: () => DiagnosticMessageChain | undefined,
             errorOutputContainer?: { error?: Diagnostic }
@@ -12378,7 +12392,7 @@ namespace ts {
 
             Debug.assert(relation !== identityRelation || !errorNode, "no error reporting in identity checking");
 
-            const result = isRelatedTo(source, target, /*reportErrors*/ !!errorNode, headMessage);
+            const result = isRelatedTo(source, target, /*reportErrors*/ !!errorNode, headMessage, undefined, assignmentVariance);
             if (overflow) {
                 error(errorNode, Diagnostics.Excessive_stack_depth_comparing_types_0_and_1, typeToString(source), typeToString(target));
             }
@@ -12509,7 +12523,7 @@ namespace ts {
              * * Ternary.Maybe if they are related with assumptions of other relationships, or
              * * Ternary.False if they are not related.
              */
-            function isRelatedTo(source: Type, target: Type, reportErrors = false, headMessage?: DiagnosticMessage, isApparentIntersectionConstituent?: boolean): Ternary {
+            function isRelatedTo(source: Type, target: Type, reportErrors = false, headMessage?: DiagnosticMessage, isApparentIntersectionConstituent?: boolean, assignmentVariance?: VarianceFlags): Ternary {
                 if (isFreshLiteralType(source)) {
                     source = (<FreshableType>source).regularType;
                 }
@@ -12605,7 +12619,7 @@ namespace ts {
                         if (result && isPerformingExcessPropertyChecks) {
                             // Validate against excess props using the original `source`
                             const discriminantType = target.flags & TypeFlags.Union ? findMatchingDiscriminantType(source, target as UnionType) : undefined;
-                            if (!propertiesRelatedTo(source, discriminantType || target, reportErrors, /*excludedProperties*/ undefined)) {
+                            if (!propertiesRelatedTo(source, discriminantType || target, reportErrors, /*excludedProperties*/ undefined, assignmentVariance)) {
                                 return Ternary.False;
                             }
                         }
@@ -12615,7 +12629,7 @@ namespace ts {
                         result = typeRelatedToEachType(getRegularTypeOfObjectLiteral(source), target as IntersectionType, reportErrors);
                         if (result && isPerformingExcessPropertyChecks) {
                             // Validate against excess props using the original `source`
-                            if (!propertiesRelatedTo(source, target, reportErrors, /*excludedProperties*/ undefined)) {
+                            if (!propertiesRelatedTo(source, target, reportErrors, /*excludedProperties*/ undefined, assignmentVariance)) {
                                 return Ternary.False;
                             }
                         }
@@ -12637,7 +12651,7 @@ namespace ts {
                         result = someTypeRelatedToType(<IntersectionType>source, target, /*reportErrors*/ false);
                     }
                     if (!result && (source.flags & TypeFlags.StructuredOrInstantiable || target.flags & TypeFlags.StructuredOrInstantiable)) {
-                        if (result = recursiveTypeRelatedTo(source, target, reportErrors, isIntersectionConstituent)) {
+                        if (result = recursiveTypeRelatedTo(source, target, reportErrors, isIntersectionConstituent, assignmentVariance)) {
                             errorInfo = saveErrorInfo;
                         }
                     }
@@ -13005,11 +13019,11 @@ namespace ts {
             // Third, check if both types are part of deeply nested chains of generic type instantiations and if so assume the types are
             // equal and infinitely expanding. Fourth, if we have reached a depth of 100 nested comparisons, assume we have runaway recursion
             // and issue an error. Otherwise, actually compare the structure of the two types.
-            function recursiveTypeRelatedTo(source: Type, target: Type, reportErrors: boolean, isIntersectionConstituent: boolean): Ternary {
+            function recursiveTypeRelatedTo(source: Type, target: Type, reportErrors: boolean, isIntersectionConstituent: boolean, assignmentVariance?: VarianceFlags): Ternary {
                 if (overflow) {
                     return Ternary.False;
                 }
-                const id = getRelationKey(source, target, relation);
+                const id = getRelationKey(source, target, relation, assignmentVariance);
                 const related = relation.get(id);
                 if (related !== undefined) {
                     if (reportErrors && related === RelationComparisonResult.Failed) {
@@ -13056,7 +13070,7 @@ namespace ts {
                 const saveExpandingFlags = expandingFlags;
                 if (!(expandingFlags & ExpandingFlags.Source) && isDeeplyNestedType(source, sourceStack, depth)) expandingFlags |= ExpandingFlags.Source;
                 if (!(expandingFlags & ExpandingFlags.Target) && isDeeplyNestedType(target, targetStack, depth)) expandingFlags |= ExpandingFlags.Target;
-                const result = expandingFlags !== ExpandingFlags.Both ? structuredTypeRelatedTo(source, target, reportErrors, isIntersectionConstituent) : Ternary.Maybe;
+                const result = expandingFlags !== ExpandingFlags.Both ? structuredTypeRelatedTo(source, target, reportErrors, isIntersectionConstituent, assignmentVariance) : Ternary.Maybe;
                 expandingFlags = saveExpandingFlags;
                 depth--;
                 if (result) {
@@ -13077,7 +13091,7 @@ namespace ts {
                 return result;
             }
 
-            function structuredTypeRelatedTo(source: Type, target: Type, reportErrors: boolean, isIntersectionConstituent: boolean): Ternary {
+            function structuredTypeRelatedTo(source: Type, target: Type, reportErrors: boolean, isIntersectionConstituent: boolean, assignmentVariance?: VarianceFlags): Ternary {
                 const flags = source.flags & target.flags;
                 if (relation === identityRelation && !(flags & TypeFlags.Object)) {
                     if (flags & TypeFlags.Index) {
@@ -13303,7 +13317,10 @@ namespace ts {
                         // We have type references to the same generic type, and the type references are not marker
                         // type references (which are intended by be compared structurally). Obtain the variance
                         // information for the type parameters and relate the type arguments accordingly.
-                        const variances = getVariances((<TypeReference>source).target);
+                        // TODO: double check that the target is Readonly<T> or ReadonlyArray<T>
+                        const variances = typeof assignmentVariance !== "undefined" 
+                            ? [assignmentVariance]
+                            : getVariances((<TypeReference>source).target);
                         const varianceResult = relateVariances((<TypeReference>source).typeArguments, (<TypeReference>target).typeArguments, variances);
                         if (varianceResult !== undefined) {
                             return varianceResult;
@@ -13325,7 +13342,7 @@ namespace ts {
                     if (source.flags & (TypeFlags.Object | TypeFlags.Intersection) && target.flags & TypeFlags.Object) {
                         // Report structural errors only if we haven't reported any errors yet
                         const reportStructuralErrors = reportErrors && errorInfo === saveErrorInfo && !sourceIsPrimitive;
-                        result = propertiesRelatedTo(source, target, reportStructuralErrors, /*excludedProperties*/ undefined);
+                        result = propertiesRelatedTo(source, target, reportStructuralErrors, /*excludedProperties*/ undefined, assignmentVariance);
                         if (result) {
                             result &= signaturesRelatedTo(source, target, SignatureKind.Call, reportStructuralErrors);
                             if (result) {
@@ -13545,7 +13562,7 @@ namespace ts {
                 return result || properties;
             }
 
-            function isPropertySymbolTypeRelated(sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean): Ternary {
+            function isPropertySymbolTypeRelated(sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean, assignmentVariance?: VarianceFlags): Ternary {
                 const targetIsOptional = strictNullChecks && !!(getCheckFlags(targetProp) & CheckFlags.Partial);
                 const source = getTypeOfSourceProperty(sourceProp);
                 if (getCheckFlags(targetProp) & CheckFlags.DeferredType && !getSymbolLinks(targetProp).type) {
@@ -13561,7 +13578,7 @@ namespace ts {
                         if (!unionParent) {
                             if (!related) {
                                 // Can't assign to a target individually - have to fallback to assigning to the _whole_ intersection (which forces normalization)
-                                return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors);
+                                return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors, undefined, undefined, assignmentVariance);
                             }
                             result &= related;
                         }
@@ -13579,16 +13596,29 @@ namespace ts {
                         // If it turns out this is too costly too often, we can replicate the error handling logic within
                         // typeRelatedToSomeType without the discriminatable type branch (as that requires a manifest union
                         // type on which to hand discriminable properties, which we are expressly trying to avoid here)
-                        return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors);
+                        return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors, undefined, undefined, assignmentVariance);
                     }
                     return result;
                 }
                 else {
-                    return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors);
+                    return isRelatedTo(source, addOptionality(getTypeOfSymbol(targetProp), targetIsOptional), reportErrors, undefined, undefined, assignmentVariance);
                 }
             }
 
             function propertyRelatedTo(source: Type, target: Type, sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean): Ternary {
+                // TODO: instead of setting overrideVariance... set whether we're inside of an assignment operation and then
+                // use that info to determine whether a relationship should be treated as invariant or not
+
+                // TODO: check if sourceProp.valueDeclaration is a PropertySignature,
+                // if it is, then we want to determine if the target is readonly... if it isn't
+                // then we need to set assignmentVariance to be invariant
+
+                // So there will be different code paths based on whether the source is a
+                // PropertyAssignment vs PropertySignature
+
+                const assignmentVariance = strictAssignment && isPropertyAssignment(sourceProp.valueDeclaration) && sourceProp.valueDeclaration.initializer && isIdentifier(sourceProp.valueDeclaration.initializer)
+                    ? VarianceFlags.Invariant
+                    : undefined;
                 const sourcePropFlags = getDeclarationModifierFlagsFromSymbol(sourceProp);
                 const targetPropFlags = getDeclarationModifierFlagsFromSymbol(targetProp);
                 if (sourcePropFlags & ModifierFlags.Private || targetPropFlags & ModifierFlags.Private) {
@@ -13630,7 +13660,7 @@ namespace ts {
                     return Ternary.False;
                 }
                 // If the target comes from a partial union prop, allow `undefined` in the target type
-                const related = isPropertySymbolTypeRelated(sourceProp, targetProp, getTypeOfSourceProperty, reportErrors);
+                const related = isPropertySymbolTypeRelated(sourceProp, targetProp, getTypeOfSourceProperty, reportErrors, assignmentVariance);
                 if (!related) {
                     if (reportErrors) {
                         reportError(Diagnostics.Types_of_property_0_are_incompatible, symbolToString(targetProp));
@@ -13655,9 +13685,18 @@ namespace ts {
                 return related;
             }
 
-            function propertiesRelatedTo(source: Type, target: Type, reportErrors: boolean, excludedProperties: UnderscoreEscapedMap<true> | undefined): Ternary {
+            function propertiesRelatedTo(source: Type, target: Type, reportErrors: boolean, excludedProperties: UnderscoreEscapedMap<true> | undefined, assignmentVariance?: VarianceFlags): Ternary {
                 if (relation === identityRelation) {
                     return propertiesIdenticalTo(source, target, excludedProperties);
+                }
+                if (assignmentVariance === VarianceFlags.Invariant) {
+                    const isCovariant = propertiesIdenticalTo(source, target, excludedProperties);
+                    const isContravariant = propertiesIdenticalTo(target, source, excludedProperties);
+                    if (isCovariant === Ternary.True && isContravariant === Ternary.True) {
+                        return Ternary.True;
+                    } else {
+                        return Ternary.False;
+                    }
                 }
                 const requireOptionalProperties = relation === subtypeRelation && !isObjectLiteralType(source) && !isEmptyArrayLiteralType(source) && !isTupleType(source);
                 const unmatchedProperty = getUnmatchedProperty(source, target, requireOptionalProperties, /*matchDiscriminantProperties*/ false);
@@ -14163,7 +14202,7 @@ namespace ts {
          * To improve caching, the relation key for two generic types uses the target's id plus ids of the type parameters.
          * For other cases, the types ids are used.
          */
-        function getRelationKey(source: Type, target: Type, relation: Map<RelationComparisonResult>) {
+        function getRelationKey(source: Type, target: Type, relation: Map<RelationComparisonResult>, variance?: VarianceFlags) {
             if (relation === identityRelation && source.id > target.id) {
                 const temp = source;
                 source = target;
@@ -14173,7 +14212,9 @@ namespace ts {
                 const typeParameters: Type[] = [];
                 return getTypeReferenceId(<TypeReference>source, typeParameters) + "," + getTypeReferenceId(<TypeReference>target, typeParameters);
             }
-            return source.id + "," + target.id;
+            return typeof variance === "undefined" 
+                ? source.id + "," + target.id
+                : source.id + "," + target.id + "," + variance;
         }
 
         // Invoke the callback for each underlying property symbol of the given symbol and return the first
@@ -19832,14 +19873,14 @@ namespace ts {
             if (refKind === JsxReferenceKind.Function) {
                 const sfcReturnConstraint = getJsxStatelessElementTypeAt(openingLikeElement);
                 if (sfcReturnConstraint) {
-                    checkTypeRelatedTo(elemInstanceType, sfcReturnConstraint, assignableRelation, openingLikeElement, Diagnostics.JSX_element_type_0_is_not_a_constructor_function_for_JSX_elements);
+                    checkTypeRelatedTo(elemInstanceType, sfcReturnConstraint, assignableRelation, openingLikeElement, /*variance*/ undefined, Diagnostics.JSX_element_type_0_is_not_a_constructor_function_for_JSX_elements);
                 }
             }
             else if (refKind === JsxReferenceKind.Component) {
                 const classConstraint = getJsxElementClassTypeAt(openingLikeElement);
                 if (classConstraint) {
                     // Issue an error if this return type isn't assignable to JSX.ElementClass or JSX.Element, failing that
-                    checkTypeRelatedTo(elemInstanceType, classConstraint, assignableRelation, openingLikeElement, Diagnostics.JSX_element_type_0_is_not_a_constructor_function_for_JSX_elements);
+                    checkTypeRelatedTo(elemInstanceType, classConstraint, assignableRelation, openingLikeElement, /*variance*/ undefined, Diagnostics.JSX_element_type_0_is_not_a_constructor_function_for_JSX_elements);
                 }
             }
             else { // Mixed
@@ -19849,7 +19890,7 @@ namespace ts {
                     return;
                 }
                 const combined = getUnionType([sfcReturnConstraint, classConstraint]);
-                checkTypeRelatedTo(elemInstanceType, combined, assignableRelation, openingLikeElement, Diagnostics.JSX_element_type_0_is_not_a_constructor_function_for_JSX_elements);
+                checkTypeRelatedTo(elemInstanceType, combined, assignableRelation, openingLikeElement, /*variance*/ undefined, Diagnostics.JSX_element_type_0_is_not_a_constructor_function_for_JSX_elements);
             }
         }
 
@@ -21073,6 +21114,8 @@ namespace ts {
             // can be specified by users through attributes property.
             const paramType = getEffectiveFirstArgumentForJsxSignature(signature, node);
             const attributesType = checkExpressionWithContextualType(node.attributes, paramType, /*inferenceContext*/ undefined, checkMode);
+
+            // TODO: set assignmentVariance to Invariant for props that identifiers
             return checkTypeRelatedToAndOptionallyElaborate(attributesType, paramType, relation, reportErrors ? node.tagName : undefined, node.attributes);
         }
 
@@ -21095,7 +21138,7 @@ namespace ts {
                 const thisArgumentType = thisArgumentNode ? checkExpression(thisArgumentNode) : voidType;
                 const errorNode = reportErrors ? (thisArgumentNode || node) : undefined;
                 const headMessage = Diagnostics.The_this_context_of_type_0_is_not_assignable_to_method_s_this_of_type_1;
-                if (!checkTypeRelatedTo(thisArgumentType, thisType, relation, errorNode, headMessage)) {
+                if (!checkTypeRelatedTo(thisArgumentType, thisType, relation, errorNode, /*variance*/ undefined, headMessage)) {
                     return false;
                 }
             }
@@ -21111,7 +21154,13 @@ namespace ts {
                     // we obtain the regular type of any object literal arguments because we may not have inferred complete
                     // parameter types yet and therefore excess property checks may yield false positives (see #17041).
                     const checkArgType = checkMode & CheckMode.SkipContextSensitive ? getRegularTypeOfObjectLiteral(argType) : argType;
-                    if (!checkTypeRelatedToAndOptionallyElaborate(checkArgType, paramType, relation, reportErrors ? arg : undefined, arg, headMessage)) {
+                                
+                    // type checking an arg for a param that isn't readonly is invariant
+                    const paramIsReadonly = !!(getObjectFlags(paramType) & ObjectFlags.Mapped && (<MappedType>paramType).declaration.readonlyToken);
+                    const assignmentVariance = strictAssignment && arg && isIdentifier(arg) && !paramIsReadonly
+                        ? VarianceFlags.Invariant
+                        : undefined;
+                    if (!checkTypeRelatedToAndOptionallyElaborate(checkArgType, paramType, relation, reportErrors ? arg : undefined, arg, headMessage, undefined, assignmentVariance)) {
                         return false;
                     }
                 }
@@ -21119,7 +21168,7 @@ namespace ts {
             if (restType) {
                 const spreadType = getSpreadArgumentType(args, argCount, args.length, restType, /*context*/ undefined);
                 const errorNode = reportErrors ? argCount < args.length ? args[argCount] : node : undefined;
-                return checkTypeRelatedTo(spreadType, restType, relation, errorNode, headMessage);
+                return checkTypeRelatedTo(spreadType, restType, relation, errorNode, /*variance*/ undefined, headMessage);
             }
             return true;
         }
