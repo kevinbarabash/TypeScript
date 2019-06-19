@@ -33,7 +33,6 @@ module TestCalls {
     readonlyBar(catNode); // okay since readonlyBar can't mutate node param
 
 
-
     type CatsNode = { animals: Cat[] };
     type AnimalsNode = { animals: Animal[] };
     type ReadonlyAnimalsNode = { animals: ReadonlyArray<Animal> };
@@ -62,4 +61,25 @@ module TestCalls {
     readonlyBaz(catsNode); // error, prevent adding a Dog to catsNode.animals
     readonlyBaz({ animals: cats }); // error, prevent adding a dot to cats
     readonlyBaz({ animals: [new Cat] }); // okay
+
+    function qux(node: ReadonlyAnimalsNode) {
+       node.animals = [new Dog];
+       // can't add a Dog to node.animals
+    }
+    qux(catsNode); // error
+    // prevent replacing catNode.animals with a new array containing a Dog
+    
+    qux({ animals: cats }); // okay
+    // replacing animals with a new array is fine since { animal: cats } is literal
+    
+    qux({ animals: [new Cat] }); // okay   
+     
+    function readonlyQux(node: Readonly<ReadonlyAnimalsNode>) {
+       // can't set node.animals to a new array
+       // can't add a Dog to node.animals
+    }
+    
+    readonlyQux(catsNode); // okay
+    readonlyQux({ animals: cats }); // okay
+    readonlyQux({ animals: [new Cat] }); // okay
 }

@@ -16,6 +16,7 @@ module TestAssignment {
     // // Simple Objects
     type CatNode = { animal: Cat };
     type AnimalNode = { animal: Animal };
+    type ReadonlyAnimalNode = { animal: Readonly<Animal> };
     
     const catNode: CatNode = { animal: new Cat };
     const cat = new Cat;
@@ -23,8 +24,10 @@ module TestAssignment {
     const animalNode1: AnimalNode = catNode; // error
     const animalNode2: AnimalNode = { animal: new Cat }; // okay
     const animalNode3: AnimalNode = { animal: cat }; // okay
-    const animalNode4: Readonly<AnimalNode> = catNode;  // okay
+    const animalNode4: Readonly<AnimalNode> = catNode; // okay
     
+    // Need to check if the target is readonly
+    const animalNode5: ReadonlyAnimalNode = { animal: cat }; // okay
     
     // Nested objects
     type CatsNode = { animals: Cat[] };
@@ -62,4 +65,8 @@ module TestAssignment {
     // while making AnimalsNode readonly prevents the reassignment of animals
     // to something other than Cat[], it's still possible to push a Dog to catsNode's
     // animals array.
+
+    const animalsNode8: Readonly<AnimalsNode> = { animals: cats }; // error
+
+    const animalsNode9: Readonly<ReadonlyAnimalsNode> = { animals: cats };
 }

@@ -13606,19 +13606,28 @@ namespace ts {
             }
 
             function propertyRelatedTo(source: Type, target: Type, sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean): Ternary {
-                // TODO: instead of setting overrideVariance... set whether we're inside of an assignment operation and then
-                // use that info to determine whether a relationship should be treated as invariant or not
+                let assignmentVariance;
 
-                // TODO: check if sourceProp.valueDeclaration is a PropertySignature,
-                // if it is, then we want to determine if the target is readonly... if it isn't
-                // then we need to set assignmentVariance to be invariant
+                if (strictAssignment) {
+                    const targetPropType = getTypeOfSymbol(targetProp);
+                    const propEscapedName = (targetPropType.aliasSymbol && targetPropType.aliasSymbol.escapedName) ||
+                        (targetPropType.symbol && targetPropType.symbol.escapedName);
+                    const targetPropIsReadonly = propEscapedName === "Readonly" || propEscapedName === "ReadonlyArray";
+                    const targetPropIsArray = targetPropType.symbol && targetPropType.symbol.escapedName === "Array";
 
-                // So there will be different code paths based on whether the source is a
-                // PropertyAssignment vs PropertySignature
+                    if (isPropertySignature(sourceProp.valueDeclaration)) {
+                        // TODO: determine if there are other case to handle for PropertySignatures
+                        assignmentVariance = targetPropIsArray && !targetPropIsReadonly ? VarianceFlags.Invariant : undefined;
+                    } else if (isPropertyAssignment(sourceProp.valueDeclaration)) {
+                        // If the target property is readonly allow it to be covariant
+                        // Otherwise, if the target property is an array OR the source object is a literal
+                        //    AND the source prop is a literal THEN force the type relation to be invariant
+                        assignmentVariance = !targetPropIsReadonly && (!isObjectLiteralType(source) || targetPropIsArray) && sourceProp.valueDeclaration.initializer && isIdentifier(sourceProp.valueDeclaration.initializer)
+                            ? VarianceFlags.Invariant
+                            : undefined;
+                    }
+                }
 
-                const assignmentVariance = strictAssignment && isPropertyAssignment(sourceProp.valueDeclaration) && sourceProp.valueDeclaration.initializer && isIdentifier(sourceProp.valueDeclaration.initializer)
-                    ? VarianceFlags.Invariant
-                    : undefined;
                 const sourcePropFlags = getDeclarationModifierFlagsFromSymbol(sourceProp);
                 const targetPropFlags = getDeclarationModifierFlagsFromSymbol(targetProp);
                 if (sourcePropFlags & ModifierFlags.Private || targetPropFlags & ModifierFlags.Private) {
