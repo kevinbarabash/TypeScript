@@ -11673,9 +11673,8 @@ namespace ts {
          * attempt to issue more specific errors on, for example, specific object literal properties or tuple members.
          */
         function checkTypeAssignableToAndOptionallyElaborate(source: Type, target: Type, errorNode: Node | undefined, expr: Expression | undefined, headMessage?: DiagnosticMessage, containingMessageChain?: () => DiagnosticMessageChain | undefined): boolean {
-            const name = (target.aliasSymbol && target.aliasSymbol.escapedName) ||
-                (target.symbol && target.symbol.escapedName);
-            const isTargetReadonly = name === "Readonly" || name === "ReadonlyArray";
+            const targetName = (target.aliasSymbol && symbolName(target.aliasSymbol)) || (target.symbol && symbolName(target.symbol));
+            const isTargetReadonly = contains(["Readonly", "ReadonlyArray", "ReadonlyMap", "ReadonlySet"], targetName);
             // We determine what the override variance should be.  If the source is an identifier and if the target
             // is readonly, then we force the assignment to be invariant.
             const assignmentVariance = strictAssignment && expr && isIdentifier(expr) && !isTargetReadonly
@@ -13609,15 +13608,15 @@ namespace ts {
                 let assignmentVariance;
 
                 if (strictAssignment) {
-                    const targetPropType = getTypeOfSymbol(targetProp);
-                    const propEscapedName = (targetPropType.aliasSymbol && targetPropType.aliasSymbol.escapedName) ||
-                        (targetPropType.symbol && targetPropType.symbol.escapedName);
-                    const targetPropIsReadonly = propEscapedName === "Readonly" || propEscapedName === "ReadonlyArray";
-                    const targetPropIsArray = targetPropType.symbol && targetPropType.symbol.escapedName === "Array";
+                    const {aliasSymbol, symbol} = getTypeOfSymbol(targetProp);
+                    const propEscapedName = (aliasSymbol && symbolName(aliasSymbol)) || (symbol && symbolName(symbol));
+                    const targetPropIsReadonly = contains(["Readonly", "ReadonlyArray", "ReadonlyMap", "ReadonlySet"], propEscapedName);
+                    const targetPropIsArray = symbol && symbol.escapedName === "Array";
 
                     if (isPropertySignature(sourceProp.valueDeclaration)) {
+                        // PropertySignatures are properties declared within interfaces
                         // TODO: determine if there are other case to handle for PropertySignatures
-                        assignmentVariance = targetPropIsArray && !targetPropIsReadonly ? VarianceFlags.Invariant : undefined;
+                        assignmentVariance = !targetPropIsReadonly && targetPropIsArray ? VarianceFlags.Invariant : undefined;
                     } else if (isPropertyAssignment(sourceProp.valueDeclaration)) {
                         // If the target property is readonly allow it to be covariant
                         // Otherwise, if the target property is an array OR the source object is a literal
@@ -13625,6 +13624,9 @@ namespace ts {
                         assignmentVariance = !targetPropIsReadonly && (!isObjectLiteralType(source) || targetPropIsArray) && sourceProp.valueDeclaration.initializer && isIdentifier(sourceProp.valueDeclaration.initializer)
                             ? VarianceFlags.Invariant
                             : undefined;
+                    } else if (isPropertyDeclaration(sourceProp.valueDeclaration)) {
+                        // PropertyDeclarations are properties declared within classes
+                        assignmentVariance = !targetPropIsReadonly && targetPropIsArray ? VarianceFlags.Invariant : undefined;
                     }
                 }
 
