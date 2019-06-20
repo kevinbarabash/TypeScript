@@ -12443,7 +12443,7 @@ namespace ts {
                 }
             }
 
-            function reportRelationError(message: DiagnosticMessage | undefined, source: Type, target: Type) {
+            function reportRelationError(message: DiagnosticMessage | undefined, source: Type, target: Type, assignmentVariance?: VarianceFlags) {
                 const [sourceType, targetType] = getTypeNamesForErrorDisplay(source, target);
 
                 if (target.flags & TypeFlags.TypeParameter && target.immediateBaseConstraint !== undefined && isTypeAssignableTo(source, target.immediateBaseConstraint)) {
@@ -12463,8 +12463,14 @@ namespace ts {
                         message = Diagnostics.Type_0_is_not_assignable_to_type_1_Two_different_types_with_this_name_exist_but_they_are_unrelated;
                     }
                     else {
-                        message = Diagnostics.Type_0_is_not_assignable_to_type_1;
+                        message = assignmentVariance === VarianceFlags.Invariant
+                            ? Diagnostics.Type_0_is_not_assignable_to_type_1_Covariant_assignment_of_aliases_to_non_readonly_targets_are_unsafe
+                            : Diagnostics.Type_0_is_not_assignable_to_type_1;
                     }
+                }
+
+                if (message === Diagnostics.Argument_of_type_0_is_not_assignable_to_parameter_of_type_1 && assignmentVariance === VarianceFlags.Invariant) {
+                    message = Diagnostics.Argument_of_type_0_is_not_assignable_to_parameter_of_type_1_Covariant_assignment_of_aliases_to_non_readonly_targets_are_unsafe;
                 }
 
                 reportError(message, sourceType, targetType);
@@ -12575,7 +12581,7 @@ namespace ts {
                     const discriminantType = target.flags & TypeFlags.Union ? findMatchingDiscriminantType(source, target as UnionType) : undefined;
                     if (hasExcessProperties(<FreshObjectLiteralType>source, target, discriminantType, reportErrors)) {
                         if (reportErrors) {
-                            reportRelationError(headMessage, source, target);
+                            reportRelationError(headMessage, source, target, assignmentVariance);
                         }
                         return Ternary.False;
                     }
@@ -12703,7 +12709,7 @@ namespace ts {
                         // Used by, eg, missing property checking to replace the top-level message with a more informative one
                         return result;
                     }
-                    reportRelationError(headMessage, source, target);
+                    reportRelationError(headMessage, source, target, assignmentVariance);
                 }
                 return result;
             }
