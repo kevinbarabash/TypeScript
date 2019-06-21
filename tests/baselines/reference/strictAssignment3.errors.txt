@@ -1,0 +1,37 @@
+tests/cases/compiler/strictAssignment3.ts(22,38): error TS2322: Type 'Stack<Cat>' is not assignable to type 'Stack<Animal>'.
+  Types of property 'items' are incompatible.
+    Type 'Cat[]' is not assignable to type 'Animal[]'. Covariant assignment of aliases to non-readonly targets are unsafe.
+
+
+==== tests/cases/compiler/strictAssignment3.ts (1 errors) ====
+    module StrictAssignment3 {
+        class Stack<T> {
+            items: T[];
+        
+            push(item: T) {
+                this.items.push(item);
+            }
+        }
+        
+        class Animal {}
+        class Cat { purr() {} }
+        class Dog { bark() {} }
+        
+        type AnimalNode = { stack: Stack<Animal> };
+        type CatNode = { stack: Stack<Cat> };
+        
+        const catStack = new Stack<Cat>();
+        catStack.push(new Cat);
+        
+        // The problem here is that the items property needs to be invariant
+        // for this assignment to be safe and it isn't
+        const animalNode: AnimalNode = { stack: catStack };
+                                         ~~~~~
+!!! error TS2322: Type 'Stack<Cat>' is not assignable to type 'Stack<Animal>'.
+!!! error TS2322:   Types of property 'items' are incompatible.
+!!! error TS2322:     Type 'Cat[]' is not assignable to type 'Animal[]'. Covariant assignment of aliases to non-readonly targets are unsafe.
+!!! related TS2728 tests/cases/compiler/strictAssignment3.ts:11:17: 'purr' is declared here.
+!!! related TS6500 tests/cases/compiler/strictAssignment3.ts:14:25: The expected type comes from property 'stack' which is declared here on type 'AnimalNode'
+        animalNode.stack.push(new Dog);    
+    }
+    

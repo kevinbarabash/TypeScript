@@ -1,0 +1,186 @@
+=== tests/cases/compiler/strictAssignment1.ts ===
+module StrictAssignment1 {
+>StrictAssignment1 : typeof StrictAssignment1
+
+    class Animal {}
+>Animal : Animal
+
+    class Cat { purr() {} }
+>Cat : Cat
+>purr : () => void
+
+    class Dog { bark() {} }
+>Dog : Dog
+>bark : () => void
+    
+    // Arrays
+    const cats: Cat[] = [new Cat];
+>cats : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+    
+    // TODO: write tests that show the order of the next two statements don't matter
+    const animals1: Animal[] = cats; // error: alias assignments are invariant
+>animals1 : Animal[]
+>cats : Cat[]
+
+    const animals2: Animal[] = [new Cat];  // okay: covariant is safe since source is a literal
+>animals2 : Animal[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+
+    const animals3: ReadonlyArray<Animal> = cats; // okay: covariant is safe since target is readonly
+>animals3 : readonly Animal[]
+>cats : Cat[]
+    
+    // TODO: check assignments as well as variable declarations
+    
+    // // Simple Objects
+    type CatNode = { animal: Cat };
+>CatNode : CatNode
+>animal : Cat
+
+    type AnimalNode = { animal: Animal };
+>AnimalNode : AnimalNode
+>animal : Animal
+
+    type ReadonlyAnimalNode = { animal: Readonly<Animal> };
+>ReadonlyAnimalNode : ReadonlyAnimalNode
+>animal : Readonly<Animal>
+    
+    const catNode: CatNode = { animal: new Cat };
+>catNode : CatNode
+>{ animal: new Cat } : { animal: Cat; }
+>animal : Cat
+>new Cat : Cat
+>Cat : typeof Cat
+
+    const cat = new Cat;
+>cat : Cat
+>new Cat : Cat
+>Cat : typeof Cat
+    
+    const animalNode1: AnimalNode = catNode; // error
+>animalNode1 : AnimalNode
+>catNode : CatNode
+
+    const animalNode2: AnimalNode = { animal: new Cat }; // okay
+>animalNode2 : AnimalNode
+>{ animal: new Cat } : { animal: Cat; }
+>animal : Cat
+>new Cat : Cat
+>Cat : typeof Cat
+
+    const animalNode3: AnimalNode = { animal: cat }; // okay
+>animalNode3 : AnimalNode
+>{ animal: cat } : { animal: Cat; }
+>animal : Cat
+>cat : Cat
+
+    const animalNode4: Readonly<AnimalNode> = catNode; // okay
+>animalNode4 : Readonly<AnimalNode>
+>catNode : CatNode
+    
+    // Need to check if the target is readonly
+    const animalNode5: ReadonlyAnimalNode = { animal: cat }; // okay
+>animalNode5 : ReadonlyAnimalNode
+>{ animal: cat } : { animal: Cat; }
+>animal : Cat
+>cat : Cat
+    
+    // Nested objects
+    type CatsNode = { animals: Cat[] };
+>CatsNode : CatsNode
+>animals : Cat[]
+
+    type AnimalsNode = { animals: Animal[] };
+>AnimalsNode : AnimalsNode
+>animals : Animal[]
+
+    type ReadonlyAnimalsNode = { animals: ReadonlyArray<Animal> };
+>ReadonlyAnimalsNode : ReadonlyAnimalsNode
+>animals : readonly Animal[]
+    
+    const catsNode: CatsNode = { animals: [new Cat] };
+>catsNode : CatsNode
+>{ animals: [new Cat] } : { animals: Cat[]; }
+>animals : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+
+    // const cats: Cat[] = [new Cat];
+    
+    const animalsNode1: AnimalsNode = catsNode; // error
+>animalsNode1 : AnimalsNode
+>catsNode : CatsNode
+
+    // prevents animalsNode.animals = [new Dog] which would conflict 
+    // with CatsNode's definition of its animals property
+    
+    const animalsNode2: AnimalsNode = { animals: [new Cat] }; // okay
+>animalsNode2 : AnimalsNode
+>{ animals: [new Cat] } : { animals: Cat[]; }
+>animals : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+
+    // okay since we're not storing [new Cat] in a variable typed as a Cat[]
+    
+    const animalsNode3: AnimalsNode = { animals: cats }; // error
+>animalsNode3 : AnimalsNode
+>{ animals: cats } : { animals: Cat[]; }
+>animals : Cat[]
+>cats : Cat[]
+
+    // prevents animalsNode.animals.push(new Dog) which would add
+    // a Dog to cats array
+    
+    const animalsNode4: ReadonlyAnimalsNode = { animals: cats }; // okay
+>animalsNode4 : ReadonlyAnimalsNode
+>{ animals: cats } : { animals: Cat[]; }
+>animals : Cat[]
+>cats : Cat[]
+
+    // okay since the animals property is a readonly array and we are unable
+    // to add new elements to it.
+    
+    const animalsNode5: ReadonlyAnimalsNode = catsNode; // error
+>animalsNode5 : ReadonlyAnimalsNode
+>catsNode : CatsNode
+
+    // prevents animalsNode.animals = [new Dog] which would conflict 
+    // with CatsNode's definition of its animals property
+    
+    const animalsNode6: Readonly<ReadonlyAnimalsNode> = catsNode; // okay
+>animalsNode6 : Readonly<ReadonlyAnimalsNode>
+>catsNode : CatsNode
+
+    // prevents both setting animals property to different from Cats[] and
+    // prevents adding a Dog to the animals array which is typed as a Cats[]
+    // on the right side
+    
+    const animalsNode7: Readonly<AnimalsNode> = catsNode;  // error
+>animalsNode7 : Readonly<AnimalsNode>
+>catsNode : CatsNode
+
+    // while making AnimalsNode readonly prevents the reassignment of animals
+    // to something other than Cat[], it's still possible to push a Dog to catsNode's
+    // animals array.
+    
+    const animalsNode8: Readonly<AnimalsNode> = { animals: cats }; // error
+>animalsNode8 : Readonly<AnimalsNode>
+>{ animals: cats } : { animals: Cat[]; }
+>animals : Cat[]
+>cats : Cat[]
+    
+    const animalsNode9: Readonly<ReadonlyAnimalsNode> = { animals: cats };
+>animalsNode9 : Readonly<ReadonlyAnimalsNode>
+>{ animals: cats } : { animals: Cat[]; }
+>animals : Cat[]
+>cats : Cat[]
+}
+

@@ -1,0 +1,76 @@
+=== tests/cases/compiler/strictAssignment3.ts ===
+module StrictAssignment3 {
+>StrictAssignment3 : typeof StrictAssignment3
+
+    class Stack<T> {
+>Stack : Stack<T>
+
+        items: T[];
+>items : T[]
+    
+        push(item: T) {
+>push : (item: T) => void
+>item : T
+
+            this.items.push(item);
+>this.items.push(item) : number
+>this.items.push : (...items: T[]) => number
+>this.items : T[]
+>this : this
+>items : T[]
+>push : (...items: T[]) => number
+>item : T
+        }
+    }
+    
+    class Animal {}
+>Animal : Animal
+
+    class Cat { purr() {} }
+>Cat : Cat
+>purr : () => void
+
+    class Dog { bark() {} }
+>Dog : Dog
+>bark : () => void
+    
+    type AnimalNode = { stack: Stack<Animal> };
+>AnimalNode : AnimalNode
+>stack : Stack<Animal>
+
+    type CatNode = { stack: Stack<Cat> };
+>CatNode : CatNode
+>stack : Stack<Cat>
+    
+    const catStack = new Stack<Cat>();
+>catStack : Stack<Cat>
+>new Stack<Cat>() : Stack<Cat>
+>Stack : typeof Stack
+
+    catStack.push(new Cat);
+>catStack.push(new Cat) : void
+>catStack.push : (item: Cat) => void
+>catStack : Stack<Cat>
+>push : (item: Cat) => void
+>new Cat : Cat
+>Cat : typeof Cat
+    
+    // The problem here is that the items property needs to be invariant
+    // for this assignment to be safe and it isn't
+    const animalNode: AnimalNode = { stack: catStack };
+>animalNode : AnimalNode
+>{ stack: catStack } : { stack: Stack<Cat>; }
+>stack : Stack<Cat>
+>catStack : Stack<Cat>
+
+    animalNode.stack.push(new Dog);    
+>animalNode.stack.push(new Dog) : void
+>animalNode.stack.push : (item: Animal) => void
+>animalNode.stack : Stack<Animal>
+>animalNode : AnimalNode
+>stack : Stack<Animal>
+>push : (item: Animal) => void
+>new Dog : Dog
+>Dog : typeof Dog
+}
+

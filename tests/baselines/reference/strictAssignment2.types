@@ -1,0 +1,283 @@
+=== tests/cases/compiler/strictAssignment2.ts ===
+module StrictAssignment2 {
+>StrictAssignment2 : typeof StrictAssignment2
+
+    class Animal {}
+>Animal : Animal
+
+    class Cat { purr() {} }
+>Cat : Cat
+>purr : () => void
+
+    class Dog { bark() {} }
+>Dog : Dog
+>bark : () => void
+    
+    const cats: Cat[] = [new Cat];
+>cats : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+    
+    function foo(animals: Animal[]) {
+>foo : (animals: Animal[]) => void
+>animals : Animal[]
+
+        animals.push(new Dog);
+>animals.push(new Dog) : number
+>animals.push : (...items: Animal[]) => number
+>animals : Animal[]
+>push : (...items: Animal[]) => number
+>new Dog : Dog
+>Dog : typeof Dog
+    }
+    foo(cats); // error, prevent a Dog from getting added to cats
+>foo(cats) : void
+>foo : (animals: Animal[]) => void
+>cats : Cat[]
+
+    foo([new Cat]);  // okay
+>foo([new Cat]) : void
+>foo : (animals: Animal[]) => void
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+    
+    function readonlyFoo(animals: ReadonlyArray<Animal>) {
+>readonlyFoo : (animals: readonly Animal[]) => void
+>animals : readonly Animal[]
+
+        // can't mutate animals
+    }
+    readonlyFoo(cats); // okay since readonlyFoo can't mutate animals param
+>readonlyFoo(cats) : void
+>readonlyFoo : (animals: readonly Animal[]) => void
+>cats : Cat[]
+    
+    type CatNode = { animal: Cat };
+>CatNode : CatNode
+>animal : Cat
+
+    type AnimalNode = { animal: Animal };
+>AnimalNode : AnimalNode
+>animal : Animal
+    
+    const catNode: CatNode = { animal: new Cat };
+>catNode : CatNode
+>{ animal: new Cat } : { animal: Cat; }
+>animal : Cat
+>new Cat : Cat
+>Cat : typeof Cat
+    
+    function bar(node: AnimalNode) {
+>bar : (node: AnimalNode) => void
+>node : AnimalNode
+
+        node.animal = new Dog;
+>node.animal = new Dog : Dog
+>node.animal : Animal
+>node : AnimalNode
+>animal : Animal
+>new Dog : Dog
+>Dog : typeof Dog
+    }
+    bar(catNode); // error, prevent catNode.animal from becoming a Dog
+>bar(catNode) : void
+>bar : (node: AnimalNode) => void
+>catNode : CatNode
+
+    bar({ animal: new Cat }); // okay, no other references to the new Cat
+>bar({ animal: new Cat }) : void
+>bar : (node: AnimalNode) => void
+>{ animal: new Cat } : { animal: Cat; }
+>animal : Cat
+>new Cat : Cat
+>Cat : typeof Cat
+    
+    function readonlyBar(node: Readonly<AnimalNode>) {
+>readonlyBar : (node: Readonly<AnimalNode>) => void
+>node : Readonly<AnimalNode>
+
+        // can't mutate node and change the animal property
+    }
+    readonlyBar(catNode); // okay since readonlyBar can't mutate node param
+>readonlyBar(catNode) : void
+>readonlyBar : (node: Readonly<AnimalNode>) => void
+>catNode : CatNode
+    
+    
+    type CatsNode = { animals: Cat[] };
+>CatsNode : CatsNode
+>animals : Cat[]
+
+    type AnimalsNode = { animals: Animal[] };
+>AnimalsNode : AnimalsNode
+>animals : Animal[]
+
+    type ReadonlyAnimalsNode = { animals: ReadonlyArray<Animal> };
+>ReadonlyAnimalsNode : ReadonlyAnimalsNode
+>animals : readonly Animal[]
+    
+    // const catsNode: CatsNode = { animals: [new Cat] };
+    const catsNode: CatsNode = { animals: cats };
+>catsNode : CatsNode
+>{ animals: cats } : { animals: Cat[]; }
+>animals : Cat[]
+>cats : Cat[]
+    
+    function baz(node: AnimalsNode) {
+>baz : (node: AnimalsNode) => void
+>node : AnimalsNode
+
+        node.animals = [new Dog];
+>node.animals = [new Dog] : Dog[]
+>node.animals : Animal[]
+>node : AnimalsNode
+>animals : Animal[]
+>[new Dog] : Dog[]
+>new Dog : Dog
+>Dog : typeof Dog
+
+        node.animals.push(new Dog);
+>node.animals.push(new Dog) : number
+>node.animals.push : (...items: Animal[]) => number
+>node.animals : Animal[]
+>node : AnimalsNode
+>animals : Animal[]
+>push : (...items: Animal[]) => number
+>new Dog : Dog
+>Dog : typeof Dog
+        }
+        
+    baz(catsNode); // error
+>baz(catsNode) : void
+>baz : (node: AnimalsNode) => void
+>catsNode : CatsNode
+
+    // prevents both replacing catNode.animals with a new array containing 
+    // a Dog or adding a Dog to the animals property
+    
+    baz({ animals: cats }); // error
+>baz({ animals: cats }) : void
+>baz : (node: AnimalsNode) => void
+>{ animals: cats } : { animals: Cat[]; }
+>animals : Cat[]
+>cats : Cat[]
+
+    // prevent adding a dog to the animals property
+    
+    baz({ animals: [new Cat] }); // okay, no other references to the array of Cats
+>baz({ animals: [new Cat] }) : void
+>baz : (node: AnimalsNode) => void
+>{ animals: [new Cat] } : { animals: Cat[]; }
+>animals : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+        
+    function readonlyBaz(node: Readonly<AnimalsNode>) {
+>readonlyBaz : (node: Readonly<AnimalsNode>) => void
+>node : Readonly<AnimalsNode>
+
+        // can't set node.animals to a new array
+        node.animals.push(new Dog);
+>node.animals.push(new Dog) : number
+>node.animals.push : (...items: Animal[]) => number
+>node.animals : Animal[]
+>node : Readonly<AnimalsNode>
+>animals : Animal[]
+>push : (...items: Animal[]) => number
+>new Dog : Dog
+>Dog : typeof Dog
+    }
+    readonlyBaz(catsNode); // error, prevent adding a Dog to catsNode.animals
+>readonlyBaz(catsNode) : void
+>readonlyBaz : (node: Readonly<AnimalsNode>) => void
+>catsNode : CatsNode
+
+    readonlyBaz({ animals: cats }); // error, prevent adding a dot to cats
+>readonlyBaz({ animals: cats }) : void
+>readonlyBaz : (node: Readonly<AnimalsNode>) => void
+>{ animals: cats } : { animals: Cat[]; }
+>animals : Cat[]
+>cats : Cat[]
+
+    readonlyBaz({ animals: [new Cat] }); // okay
+>readonlyBaz({ animals: [new Cat] }) : void
+>readonlyBaz : (node: Readonly<AnimalsNode>) => void
+>{ animals: [new Cat] } : { animals: Cat[]; }
+>animals : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+    
+    function qux(node: ReadonlyAnimalsNode) {
+>qux : (node: ReadonlyAnimalsNode) => void
+>node : ReadonlyAnimalsNode
+
+        node.animals = [new Dog];
+>node.animals = [new Dog] : Dog[]
+>node.animals : readonly Animal[]
+>node : ReadonlyAnimalsNode
+>animals : readonly Animal[]
+>[new Dog] : Dog[]
+>new Dog : Dog
+>Dog : typeof Dog
+
+        // can't add a Dog to node.animals
+    }
+    qux(catsNode); // error
+>qux(catsNode) : void
+>qux : (node: ReadonlyAnimalsNode) => void
+>catsNode : CatsNode
+
+    // prevent replacing catNode.animals with a new array containing a Dog
+    
+    qux({ animals: cats }); // okay
+>qux({ animals: cats }) : void
+>qux : (node: ReadonlyAnimalsNode) => void
+>{ animals: cats } : { animals: Cat[]; }
+>animals : Cat[]
+>cats : Cat[]
+
+    // replacing animals with a new array is fine since { animal: cats } is literal
+    
+    qux({ animals: [new Cat] }); // okay   
+>qux({ animals: [new Cat] }) : void
+>qux : (node: ReadonlyAnimalsNode) => void
+>{ animals: [new Cat] } : { animals: Cat[]; }
+>animals : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+        
+    function readonlyQux(node: Readonly<ReadonlyAnimalsNode>) {
+>readonlyQux : (node: Readonly<ReadonlyAnimalsNode>) => void
+>node : Readonly<ReadonlyAnimalsNode>
+
+        // can't set node.animals to a new array
+        // can't add a Dog to node.animals
+    }
+    
+    readonlyQux(catsNode); // okay
+>readonlyQux(catsNode) : void
+>readonlyQux : (node: Readonly<ReadonlyAnimalsNode>) => void
+>catsNode : CatsNode
+
+    readonlyQux({ animals: cats }); // okay
+>readonlyQux({ animals: cats }) : void
+>readonlyQux : (node: Readonly<ReadonlyAnimalsNode>) => void
+>{ animals: cats } : { animals: Cat[]; }
+>animals : Cat[]
+>cats : Cat[]
+
+    readonlyQux({ animals: [new Cat] }); // okay
+>readonlyQux({ animals: [new Cat] }) : void
+>readonlyQux : (node: Readonly<ReadonlyAnimalsNode>) => void
+>{ animals: [new Cat] } : { animals: Cat[]; }
+>animals : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+}
+

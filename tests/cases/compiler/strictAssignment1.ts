@@ -1,4 +1,6 @@
-module TestAssignment {
+// @strictAssignment: true
+
+module StrictAssignment1 {
     class Animal {}
     class Cat { purr() {} }
     class Dog { bark() {} }
@@ -65,8 +67,8 @@ module TestAssignment {
     // while making AnimalsNode readonly prevents the reassignment of animals
     // to something other than Cat[], it's still possible to push a Dog to catsNode's
     // animals array.
-
+    
     const animalsNode8: Readonly<AnimalsNode> = { animals: cats }; // error
-
+    
     const animalsNode9: Readonly<ReadonlyAnimalsNode> = { animals: cats };
 }

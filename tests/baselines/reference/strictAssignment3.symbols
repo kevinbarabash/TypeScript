@@ -1,0 +1,78 @@
+=== tests/cases/compiler/strictAssignment3.ts ===
+module StrictAssignment3 {
+>StrictAssignment3 : Symbol(StrictAssignment3, Decl(strictAssignment3.ts, 0, 0))
+
+    class Stack<T> {
+>Stack : Symbol(Stack, Decl(strictAssignment3.ts, 0, 26))
+>T : Symbol(T, Decl(strictAssignment3.ts, 1, 16))
+
+        items: T[];
+>items : Symbol(Stack.items, Decl(strictAssignment3.ts, 1, 20))
+>T : Symbol(T, Decl(strictAssignment3.ts, 1, 16))
+    
+        push(item: T) {
+>push : Symbol(Stack.push, Decl(strictAssignment3.ts, 2, 19))
+>item : Symbol(item, Decl(strictAssignment3.ts, 4, 13))
+>T : Symbol(T, Decl(strictAssignment3.ts, 1, 16))
+
+            this.items.push(item);
+>this.items.push : Symbol(Array.push, Decl(lib.es5.d.ts, --, --))
+>this.items : Symbol(Stack.items, Decl(strictAssignment3.ts, 1, 20))
+>this : Symbol(Stack, Decl(strictAssignment3.ts, 0, 26))
+>items : Symbol(Stack.items, Decl(strictAssignment3.ts, 1, 20))
+>push : Symbol(Array.push, Decl(lib.es5.d.ts, --, --))
+>item : Symbol(item, Decl(strictAssignment3.ts, 4, 13))
+        }
+    }
+    
+    class Animal {}
+>Animal : Symbol(Animal, Decl(strictAssignment3.ts, 7, 5))
+
+    class Cat { purr() {} }
+>Cat : Symbol(Cat, Decl(strictAssignment3.ts, 9, 19))
+>purr : Symbol(Cat.purr, Decl(strictAssignment3.ts, 10, 15))
+
+    class Dog { bark() {} }
+>Dog : Symbol(Dog, Decl(strictAssignment3.ts, 10, 27))
+>bark : Symbol(Dog.bark, Decl(strictAssignment3.ts, 11, 15))
+    
+    type AnimalNode = { stack: Stack<Animal> };
+>AnimalNode : Symbol(AnimalNode, Decl(strictAssignment3.ts, 11, 27))
+>stack : Symbol(stack, Decl(strictAssignment3.ts, 13, 23))
+>Stack : Symbol(Stack, Decl(strictAssignment3.ts, 0, 26))
+>Animal : Symbol(Animal, Decl(strictAssignment3.ts, 7, 5))
+
+    type CatNode = { stack: Stack<Cat> };
+>CatNode : Symbol(CatNode, Decl(strictAssignment3.ts, 13, 47))
+>stack : Symbol(stack, Decl(strictAssignment3.ts, 14, 20))
+>Stack : Symbol(Stack, Decl(strictAssignment3.ts, 0, 26))
+>Cat : Symbol(Cat, Decl(strictAssignment3.ts, 9, 19))
+    
+    const catStack = new Stack<Cat>();
+>catStack : Symbol(catStack, Decl(strictAssignment3.ts, 16, 9))
+>Stack : Symbol(Stack, Decl(strictAssignment3.ts, 0, 26))
+>Cat : Symbol(Cat, Decl(strictAssignment3.ts, 9, 19))
+
+    catStack.push(new Cat);
+>catStack.push : Symbol(Stack.push, Decl(strictAssignment3.ts, 2, 19))
+>catStack : Symbol(catStack, Decl(strictAssignment3.ts, 16, 9))
+>push : Symbol(Stack.push, Decl(strictAssignment3.ts, 2, 19))
+>Cat : Symbol(Cat, Decl(strictAssignment3.ts, 9, 19))
+    
+    // The problem here is that the items property needs to be invariant
+    // for this assignment to be safe and it isn't
+    const animalNode: AnimalNode = { stack: catStack };
+>animalNode : Symbol(animalNode, Decl(strictAssignment3.ts, 21, 9))
+>AnimalNode : Symbol(AnimalNode, Decl(strictAssignment3.ts, 11, 27))
+>stack : Symbol(stack, Decl(strictAssignment3.ts, 21, 36))
+>catStack : Symbol(catStack, Decl(strictAssignment3.ts, 16, 9))
+
+    animalNode.stack.push(new Dog);    
+>animalNode.stack.push : Symbol(Stack.push, Decl(strictAssignment3.ts, 2, 19))
+>animalNode.stack : Symbol(stack, Decl(strictAssignment3.ts, 13, 23))
+>animalNode : Symbol(animalNode, Decl(strictAssignment3.ts, 21, 9))
+>stack : Symbol(stack, Decl(strictAssignment3.ts, 13, 23))
+>push : Symbol(Stack.push, Decl(strictAssignment3.ts, 2, 19))
+>Dog : Symbol(Dog, Decl(strictAssignment3.ts, 10, 27))
+}
+
