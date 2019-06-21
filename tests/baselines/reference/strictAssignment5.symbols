@@ -1,0 +1,87 @@
+=== tests/cases/compiler/strictAssignment5.tsx ===
+/// <reference path="react16.d.ts" />
+import React from "react";
+>React : Symbol(React, Decl(strictAssignment5.tsx, 1, 6))
+
+module StrictAssignment5 {
+>StrictAssignment5 : Symbol(StrictAssignment5, Decl(strictAssignment5.tsx, 1, 26))
+
+    class Animal {}
+>Animal : Symbol(Animal, Decl(strictAssignment5.tsx, 3, 26))
+
+    class Cat { purr() {} }
+>Cat : Symbol(Cat, Decl(strictAssignment5.tsx, 4, 19))
+>purr : Symbol(Cat.purr, Decl(strictAssignment5.tsx, 5, 15))
+
+    class Dog { bark() {} }
+>Dog : Symbol(Dog, Decl(strictAssignment5.tsx, 5, 27))
+>bark : Symbol(Dog.bark, Decl(strictAssignment5.tsx, 6, 15))
+
+    type Props = {
+>Props : Symbol(Props, Decl(strictAssignment5.tsx, 6, 27))
+
+        animals: Animal[],
+>animals : Symbol(animals, Decl(strictAssignment5.tsx, 8, 18))
+>Animal : Symbol(Animal, Decl(strictAssignment5.tsx, 3, 26))
+
+    };
+
+    class Foo extends React.Component<Props> {
+>Foo : Symbol(Foo, Decl(strictAssignment5.tsx, 10, 6))
+>React.Component : Symbol(React.Component, Decl(react16.d.ts, 345, 54), Decl(react16.d.ts, 349, 94))
+>React : Symbol(React, Decl(strictAssignment5.tsx, 1, 6))
+>Component : Symbol(React.Component, Decl(react16.d.ts, 345, 54), Decl(react16.d.ts, 349, 94))
+>Props : Symbol(Props, Decl(strictAssignment5.tsx, 6, 27))
+
+        render() {
+>render : Symbol(Foo.render, Decl(strictAssignment5.tsx, 12, 46))
+
+            return "foo";
+        }
+    }
+
+    const cats: Cat[] = [new Cat];
+>cats : Symbol(cats, Decl(strictAssignment5.tsx, 18, 9))
+>Cat : Symbol(Cat, Decl(strictAssignment5.tsx, 4, 19))
+>Cat : Symbol(Cat, Decl(strictAssignment5.tsx, 4, 19))
+
+    <Foo animals={cats} />; // error
+>Foo : Symbol(Foo, Decl(strictAssignment5.tsx, 10, 6))
+>animals : Symbol(animals, Decl(strictAssignment5.tsx, 19, 8))
+>cats : Symbol(cats, Decl(strictAssignment5.tsx, 18, 9))
+
+    <Foo animals={[new Cat]} />; // okay
+>Foo : Symbol(Foo, Decl(strictAssignment5.tsx, 10, 6))
+>animals : Symbol(animals, Decl(strictAssignment5.tsx, 20, 8))
+>Cat : Symbol(Cat, Decl(strictAssignment5.tsx, 4, 19))
+    
+    type ReadonlyProps = {
+>ReadonlyProps : Symbol(ReadonlyProps, Decl(strictAssignment5.tsx, 20, 32))
+
+        animals: ReadonlyArray<Animal>,
+>animals : Symbol(animals, Decl(strictAssignment5.tsx, 22, 26))
+>ReadonlyArray : Symbol(ReadonlyArray, Decl(lib.es5.d.ts, --, --))
+>Animal : Symbol(Animal, Decl(strictAssignment5.tsx, 3, 26))
+
+    };
+
+    class Bar extends React.Component<ReadonlyProps> {
+>Bar : Symbol(Bar, Decl(strictAssignment5.tsx, 24, 6))
+>React.Component : Symbol(React.Component, Decl(react16.d.ts, 345, 54), Decl(react16.d.ts, 349, 94))
+>React : Symbol(React, Decl(strictAssignment5.tsx, 1, 6))
+>Component : Symbol(React.Component, Decl(react16.d.ts, 345, 54), Decl(react16.d.ts, 349, 94))
+>ReadonlyProps : Symbol(ReadonlyProps, Decl(strictAssignment5.tsx, 20, 32))
+
+        render() {
+>render : Symbol(Bar.render, Decl(strictAssignment5.tsx, 26, 54))
+
+            return "foo";
+        }
+    }
+
+    <Bar animals={cats} />; // okay
+>Bar : Symbol(Bar, Decl(strictAssignment5.tsx, 24, 6))
+>animals : Symbol(animals, Decl(strictAssignment5.tsx, 32, 8))
+>cats : Symbol(cats, Decl(strictAssignment5.tsx, 18, 9))
+}
+

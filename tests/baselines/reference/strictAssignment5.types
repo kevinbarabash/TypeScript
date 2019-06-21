@@ -1,0 +1,90 @@
+=== tests/cases/compiler/strictAssignment5.tsx ===
+/// <reference path="react16.d.ts" />
+import React from "react";
+>React : typeof React
+
+module StrictAssignment5 {
+>StrictAssignment5 : typeof StrictAssignment5
+
+    class Animal {}
+>Animal : Animal
+
+    class Cat { purr() {} }
+>Cat : Cat
+>purr : () => void
+
+    class Dog { bark() {} }
+>Dog : Dog
+>bark : () => void
+
+    type Props = {
+>Props : { animals: Animal[]; }
+
+        animals: Animal[],
+>animals : Animal[]
+
+    };
+
+    class Foo extends React.Component<Props> {
+>Foo : Foo
+>React.Component : React.Component<{ animals: Animal[]; }, {}, any>
+>React : typeof React
+>Component : typeof React.Component
+
+        render() {
+>render : () => string
+
+            return "foo";
+>"foo" : "foo"
+        }
+    }
+
+    const cats: Cat[] = [new Cat];
+>cats : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+
+    <Foo animals={cats} />; // error
+><Foo animals={cats} /> : JSX.Element
+>Foo : typeof Foo
+>animals : Cat[]
+>cats : Cat[]
+
+    <Foo animals={[new Cat]} />; // okay
+><Foo animals={[new Cat]} /> : JSX.Element
+>Foo : typeof Foo
+>animals : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+    
+    type ReadonlyProps = {
+>ReadonlyProps : { animals: readonly Animal[]; }
+
+        animals: ReadonlyArray<Animal>,
+>animals : readonly Animal[]
+
+    };
+
+    class Bar extends React.Component<ReadonlyProps> {
+>Bar : Bar
+>React.Component : React.Component<{ animals: readonly Animal[]; }, {}, any>
+>React : typeof React
+>Component : typeof React.Component
+
+        render() {
+>render : () => string
+
+            return "foo";
+>"foo" : "foo"
+        }
+    }
+
+    <Bar animals={cats} />; // okay
+><Bar animals={cats} /> : JSX.Element
+>Bar : typeof Bar
+>animals : Cat[]
+>cats : Cat[]
+}
+

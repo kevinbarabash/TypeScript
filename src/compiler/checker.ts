@@ -13613,7 +13613,7 @@ namespace ts {
             function propertyRelatedTo(source: Type, target: Type, sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean): Ternary {
                 let assignmentVariance;
 
-                if (strictAssignment) {
+                if (strictAssignment && sourceProp.valueDeclaration) {
                     const {aliasSymbol, symbol} = getTypeOfSymbol(targetProp);
                     const propEscapedName = (aliasSymbol && symbolName(aliasSymbol)) || (symbol && symbolName(symbol));
                     const targetPropIsReadonly = contains(["Readonly", "ReadonlyArray", "ReadonlyMap", "ReadonlySet"], propEscapedName);
@@ -13635,6 +13635,15 @@ namespace ts {
                     else if (isPropertyDeclaration(sourceProp.valueDeclaration)) {
                         // PropertyDeclarations are properties declared within classes
                         assignmentVariance = !targetPropIsReadonly && targetPropIsArray ? VarianceFlags.Invariant : undefined;
+                    }
+                    else if (isJsxAttribute(sourceProp.valueDeclaration)) {
+                        const {initializer} = sourceProp.valueDeclaration;
+                        if (initializer && isJsxExpression(initializer)) {
+                            const {expression} = initializer;
+                            if (expression && isIdentifier(expression)) {
+                                assignmentVariance = VarianceFlags.Invariant;
+                            }
+                        }
                     }
                 }
 
@@ -21135,7 +21144,6 @@ namespace ts {
             const paramType = getEffectiveFirstArgumentForJsxSignature(signature, node);
             const attributesType = checkExpressionWithContextualType(node.attributes, paramType, /*inferenceContext*/ undefined, checkMode);
 
-            // TODO: set assignmentVariance to Invariant for props that identifiers
             return checkTypeRelatedToAndOptionallyElaborate(attributesType, paramType, relation, reportErrors ? node.tagName : undefined, node.attributes);
         }
 
