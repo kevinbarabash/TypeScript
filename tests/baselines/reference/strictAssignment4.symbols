@@ -1,0 +1,76 @@
+=== tests/cases/compiler/strictAssignment4.ts ===
+module StrictAssignment4 {
+>StrictAssignment4 : Symbol(StrictAssignment4, Decl(strictAssignment4.ts, 0, 0))
+
+    class Animal {}
+>Animal : Symbol(Animal, Decl(strictAssignment4.ts, 0, 26))
+
+    class Cat { purr() {} }
+>Cat : Symbol(Cat, Decl(strictAssignment4.ts, 1, 19))
+>purr : Symbol(Cat.purr, Decl(strictAssignment4.ts, 2, 15))
+
+    class Dog { bark() {} }
+>Dog : Symbol(Dog, Decl(strictAssignment4.ts, 2, 27))
+>bark : Symbol(Dog.bark, Decl(strictAssignment4.ts, 3, 15))
+    
+    const cats: Cat[] = [new Cat];
+>cats : Symbol(cats, Decl(strictAssignment4.ts, 5, 9))
+>Cat : Symbol(Cat, Decl(strictAssignment4.ts, 1, 19))
+>Cat : Symbol(Cat, Decl(strictAssignment4.ts, 1, 19))
+    
+    function foo(animals: Cat[]): void
+>foo : Symbol(foo, Decl(strictAssignment4.ts, 5, 34), Decl(strictAssignment4.ts, 7, 38))
+>animals : Symbol(animals, Decl(strictAssignment4.ts, 7, 17))
+>Cat : Symbol(Cat, Decl(strictAssignment4.ts, 1, 19))
+
+    function foo(animals: Animal[]): void {
+>foo : Symbol(foo, Decl(strictAssignment4.ts, 5, 34), Decl(strictAssignment4.ts, 7, 38))
+>animals : Symbol(animals, Decl(strictAssignment4.ts, 8, 17))
+>Animal : Symbol(Animal, Decl(strictAssignment4.ts, 0, 26))
+    }
+    foo(cats); // okay, because there's a safe overload
+>foo : Symbol(foo, Decl(strictAssignment4.ts, 5, 34), Decl(strictAssignment4.ts, 7, 38))
+>cats : Symbol(cats, Decl(strictAssignment4.ts, 5, 9))
+
+    foo([new Cat]); // okay, because there's a safe overload
+>foo : Symbol(foo, Decl(strictAssignment4.ts, 5, 34), Decl(strictAssignment4.ts, 7, 38))
+>Cat : Symbol(Cat, Decl(strictAssignment4.ts, 1, 19))
+
+    function oof(animals: Animal[]): void 
+>oof : Symbol(oof, Decl(strictAssignment4.ts, 11, 19), Decl(strictAssignment4.ts, 13, 41))
+>animals : Symbol(animals, Decl(strictAssignment4.ts, 13, 17))
+>Animal : Symbol(Animal, Decl(strictAssignment4.ts, 0, 26))
+
+    function oof(animals: Cat[]): void {
+>oof : Symbol(oof, Decl(strictAssignment4.ts, 11, 19), Decl(strictAssignment4.ts, 13, 41))
+>animals : Symbol(animals, Decl(strictAssignment4.ts, 14, 17))
+>Cat : Symbol(Cat, Decl(strictAssignment4.ts, 1, 19))
+    }
+    // TODO: make it so this isn't an error
+    oof(cats); // okay, because there's a safe overload
+>oof : Symbol(oof, Decl(strictAssignment4.ts, 11, 19), Decl(strictAssignment4.ts, 13, 41))
+>cats : Symbol(cats, Decl(strictAssignment4.ts, 5, 9))
+
+    oof([new Cat]); // okay, because there's a safe overload
+>oof : Symbol(oof, Decl(strictAssignment4.ts, 11, 19), Decl(strictAssignment4.ts, 13, 41))
+>Cat : Symbol(Cat, Decl(strictAssignment4.ts, 1, 19))
+
+    function bar(animals: Dog[]): void
+>bar : Symbol(bar, Decl(strictAssignment4.ts, 18, 19), Decl(strictAssignment4.ts, 20, 38))
+>animals : Symbol(animals, Decl(strictAssignment4.ts, 20, 17))
+>Dog : Symbol(Dog, Decl(strictAssignment4.ts, 2, 27))
+
+    function bar(animals: Animal[]): void {
+>bar : Symbol(bar, Decl(strictAssignment4.ts, 18, 19), Decl(strictAssignment4.ts, 20, 38))
+>animals : Symbol(animals, Decl(strictAssignment4.ts, 21, 17))
+>Animal : Symbol(Animal, Decl(strictAssignment4.ts, 0, 26))
+    }
+    bar(cats); // error, there's no safe overload
+>bar : Symbol(bar, Decl(strictAssignment4.ts, 18, 19), Decl(strictAssignment4.ts, 20, 38))
+>cats : Symbol(cats, Decl(strictAssignment4.ts, 5, 9))
+
+    bar([new Cat]); // error, there's no safe overload
+>bar : Symbol(bar, Decl(strictAssignment4.ts, 18, 19), Decl(strictAssignment4.ts, 20, 38))
+>Cat : Symbol(Cat, Decl(strictAssignment4.ts, 1, 19))
+}
+

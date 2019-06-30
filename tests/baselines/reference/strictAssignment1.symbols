@@ -1,0 +1,199 @@
+=== tests/cases/compiler/strictAssignment1.ts ===
+module StrictAssignment1 {
+>StrictAssignment1 : Symbol(StrictAssignment1, Decl(strictAssignment1.ts, 0, 0))
+
+    class Animal {}
+>Animal : Symbol(Animal, Decl(strictAssignment1.ts, 0, 26))
+
+    class Cat { purr() {} }
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+>purr : Symbol(Cat.purr, Decl(strictAssignment1.ts, 2, 15))
+
+    class Dog { bark() {} }
+>Dog : Symbol(Dog, Decl(strictAssignment1.ts, 2, 27))
+>bark : Symbol(Dog.bark, Decl(strictAssignment1.ts, 3, 15))
+    
+    // Arrays
+    const cats: Cat[] = [new Cat];
+>cats : Symbol(cats, Decl(strictAssignment1.ts, 6, 9))
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+    
+    // TODO: write tests that show the order of the next two statements don't matter
+    const animals1: Animal[] = cats; // error: alias assignments are invariant
+>animals1 : Symbol(animals1, Decl(strictAssignment1.ts, 9, 9))
+>Animal : Symbol(Animal, Decl(strictAssignment1.ts, 0, 26))
+>cats : Symbol(cats, Decl(strictAssignment1.ts, 6, 9))
+
+    const animals2: Animal[] = [new Cat];  // okay: covariant is safe since source is a literal
+>animals2 : Symbol(animals2, Decl(strictAssignment1.ts, 10, 9))
+>Animal : Symbol(Animal, Decl(strictAssignment1.ts, 0, 26))
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+
+    const animals3: ReadonlyArray<Animal> = cats; // okay: covariant is safe since target is readonly
+>animals3 : Symbol(animals3, Decl(strictAssignment1.ts, 11, 9))
+>ReadonlyArray : Symbol(ReadonlyArray, Decl(lib.es5.d.ts, --, --))
+>Animal : Symbol(Animal, Decl(strictAssignment1.ts, 0, 26))
+>cats : Symbol(cats, Decl(strictAssignment1.ts, 6, 9))
+    
+    // TODO: check assignments as well as variable declarations
+    
+    // // Simple Objects
+    type CatNode = { animal: Cat };
+>CatNode : Symbol(CatNode, Decl(strictAssignment1.ts, 11, 49))
+>animal : Symbol(animal, Decl(strictAssignment1.ts, 16, 20))
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+
+    type AnimalNode = { animal: Animal };
+>AnimalNode : Symbol(AnimalNode, Decl(strictAssignment1.ts, 16, 35))
+>animal : Symbol(animal, Decl(strictAssignment1.ts, 17, 23))
+>Animal : Symbol(Animal, Decl(strictAssignment1.ts, 0, 26))
+
+    type ReadonlyAnimalNode = { animal: Readonly<Animal> };
+>ReadonlyAnimalNode : Symbol(ReadonlyAnimalNode, Decl(strictAssignment1.ts, 17, 41))
+>animal : Symbol(animal, Decl(strictAssignment1.ts, 18, 31))
+>Readonly : Symbol(Readonly, Decl(lib.es5.d.ts, --, --))
+>Animal : Symbol(Animal, Decl(strictAssignment1.ts, 0, 26))
+    
+    const catNode: CatNode = { animal: new Cat };
+>catNode : Symbol(catNode, Decl(strictAssignment1.ts, 20, 9))
+>CatNode : Symbol(CatNode, Decl(strictAssignment1.ts, 11, 49))
+>animal : Symbol(animal, Decl(strictAssignment1.ts, 20, 30))
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+
+    const cat = new Cat;
+>cat : Symbol(cat, Decl(strictAssignment1.ts, 21, 9))
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+    
+    const animalNode1: AnimalNode = catNode; // error
+>animalNode1 : Symbol(animalNode1, Decl(strictAssignment1.ts, 23, 9))
+>AnimalNode : Symbol(AnimalNode, Decl(strictAssignment1.ts, 16, 35))
+>catNode : Symbol(catNode, Decl(strictAssignment1.ts, 20, 9))
+
+    const animalNode2: AnimalNode = { animal: new Cat }; // okay
+>animalNode2 : Symbol(animalNode2, Decl(strictAssignment1.ts, 24, 9))
+>AnimalNode : Symbol(AnimalNode, Decl(strictAssignment1.ts, 16, 35))
+>animal : Symbol(animal, Decl(strictAssignment1.ts, 24, 37))
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+
+    const animalNode3: AnimalNode = { animal: cat }; // okay
+>animalNode3 : Symbol(animalNode3, Decl(strictAssignment1.ts, 25, 9))
+>AnimalNode : Symbol(AnimalNode, Decl(strictAssignment1.ts, 16, 35))
+>animal : Symbol(animal, Decl(strictAssignment1.ts, 25, 37))
+>cat : Symbol(cat, Decl(strictAssignment1.ts, 21, 9))
+
+    const animalNode4: Readonly<AnimalNode> = catNode; // okay
+>animalNode4 : Symbol(animalNode4, Decl(strictAssignment1.ts, 26, 9))
+>Readonly : Symbol(Readonly, Decl(lib.es5.d.ts, --, --))
+>AnimalNode : Symbol(AnimalNode, Decl(strictAssignment1.ts, 16, 35))
+>catNode : Symbol(catNode, Decl(strictAssignment1.ts, 20, 9))
+    
+    // Need to check if the target is readonly
+    const animalNode5: ReadonlyAnimalNode = { animal: cat }; // okay
+>animalNode5 : Symbol(animalNode5, Decl(strictAssignment1.ts, 29, 9))
+>ReadonlyAnimalNode : Symbol(ReadonlyAnimalNode, Decl(strictAssignment1.ts, 17, 41))
+>animal : Symbol(animal, Decl(strictAssignment1.ts, 29, 45))
+>cat : Symbol(cat, Decl(strictAssignment1.ts, 21, 9))
+    
+    // Nested objects
+    type CatsNode = { animals: Cat[] };
+>CatsNode : Symbol(CatsNode, Decl(strictAssignment1.ts, 29, 60))
+>animals : Symbol(animals, Decl(strictAssignment1.ts, 32, 21))
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+
+    type AnimalsNode = { animals: Animal[] };
+>AnimalsNode : Symbol(AnimalsNode, Decl(strictAssignment1.ts, 32, 39))
+>animals : Symbol(animals, Decl(strictAssignment1.ts, 33, 24))
+>Animal : Symbol(Animal, Decl(strictAssignment1.ts, 0, 26))
+
+    type ReadonlyAnimalsNode = { animals: ReadonlyArray<Animal> };
+>ReadonlyAnimalsNode : Symbol(ReadonlyAnimalsNode, Decl(strictAssignment1.ts, 33, 45))
+>animals : Symbol(animals, Decl(strictAssignment1.ts, 34, 32))
+>ReadonlyArray : Symbol(ReadonlyArray, Decl(lib.es5.d.ts, --, --))
+>Animal : Symbol(Animal, Decl(strictAssignment1.ts, 0, 26))
+    
+    const catsNode: CatsNode = { animals: [new Cat] };
+>catsNode : Symbol(catsNode, Decl(strictAssignment1.ts, 36, 9))
+>CatsNode : Symbol(CatsNode, Decl(strictAssignment1.ts, 29, 60))
+>animals : Symbol(animals, Decl(strictAssignment1.ts, 36, 32))
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+
+    // const cats: Cat[] = [new Cat];
+    
+    const animalsNode1: AnimalsNode = catsNode; // error
+>animalsNode1 : Symbol(animalsNode1, Decl(strictAssignment1.ts, 39, 9))
+>AnimalsNode : Symbol(AnimalsNode, Decl(strictAssignment1.ts, 32, 39))
+>catsNode : Symbol(catsNode, Decl(strictAssignment1.ts, 36, 9))
+
+    // prevents animalsNode.animals = [new Dog] which would conflict 
+    // with CatsNode's definition of its animals property
+    
+    const animalsNode2: AnimalsNode = { animals: [new Cat] }; // okay
+>animalsNode2 : Symbol(animalsNode2, Decl(strictAssignment1.ts, 43, 9))
+>AnimalsNode : Symbol(AnimalsNode, Decl(strictAssignment1.ts, 32, 39))
+>animals : Symbol(animals, Decl(strictAssignment1.ts, 43, 39))
+>Cat : Symbol(Cat, Decl(strictAssignment1.ts, 1, 19))
+
+    // okay since we're not storing [new Cat] in a variable typed as a Cat[]
+    
+    const animalsNode3: AnimalsNode = { animals: cats }; // error
+>animalsNode3 : Symbol(animalsNode3, Decl(strictAssignment1.ts, 46, 9))
+>AnimalsNode : Symbol(AnimalsNode, Decl(strictAssignment1.ts, 32, 39))
+>animals : Symbol(animals, Decl(strictAssignment1.ts, 46, 39))
+>cats : Symbol(cats, Decl(strictAssignment1.ts, 6, 9))
+
+    // prevents animalsNode.animals.push(new Dog) which would add
+    // a Dog to cats array
+    
+    const animalsNode4: ReadonlyAnimalsNode = { animals: cats }; // okay
+>animalsNode4 : Symbol(animalsNode4, Decl(strictAssignment1.ts, 50, 9))
+>ReadonlyAnimalsNode : Symbol(ReadonlyAnimalsNode, Decl(strictAssignment1.ts, 33, 45))
+>animals : Symbol(animals, Decl(strictAssignment1.ts, 50, 47))
+>cats : Symbol(cats, Decl(strictAssignment1.ts, 6, 9))
+
+    // okay since the animals property is a readonly array and we are unable
+    // to add new elements to it.
+    
+    const animalsNode5: ReadonlyAnimalsNode = catsNode; // error
+>animalsNode5 : Symbol(animalsNode5, Decl(strictAssignment1.ts, 54, 9))
+>ReadonlyAnimalsNode : Symbol(ReadonlyAnimalsNode, Decl(strictAssignment1.ts, 33, 45))
+>catsNode : Symbol(catsNode, Decl(strictAssignment1.ts, 36, 9))
+
+    // prevents animalsNode.animals = [new Dog] which would conflict 
+    // with CatsNode's definition of its animals property
+    
+    const animalsNode6: Readonly<ReadonlyAnimalsNode> = catsNode; // okay
+>animalsNode6 : Symbol(animalsNode6, Decl(strictAssignment1.ts, 58, 9))
+>Readonly : Symbol(Readonly, Decl(lib.es5.d.ts, --, --))
+>ReadonlyAnimalsNode : Symbol(ReadonlyAnimalsNode, Decl(strictAssignment1.ts, 33, 45))
+>catsNode : Symbol(catsNode, Decl(strictAssignment1.ts, 36, 9))
+
+    // prevents both setting animals property to different from Cats[] and
+    // prevents adding a Dog to the animals array which is typed as a Cats[]
+    // on the right side
+    
+    const animalsNode7: Readonly<AnimalsNode> = catsNode;  // error
+>animalsNode7 : Symbol(animalsNode7, Decl(strictAssignment1.ts, 63, 9))
+>Readonly : Symbol(Readonly, Decl(lib.es5.d.ts, --, --))
+>AnimalsNode : Symbol(AnimalsNode, Decl(strictAssignment1.ts, 32, 39))
+>catsNode : Symbol(catsNode, Decl(strictAssignment1.ts, 36, 9))
+
+    // while making AnimalsNode readonly prevents the reassignment of animals
+    // to something other than Cat[], it's still possible to push a Dog to catsNode's
+    // animals array.
+    
+    const animalsNode8: Readonly<AnimalsNode> = { animals: cats }; // error
+>animalsNode8 : Symbol(animalsNode8, Decl(strictAssignment1.ts, 68, 9))
+>Readonly : Symbol(Readonly, Decl(lib.es5.d.ts, --, --))
+>AnimalsNode : Symbol(AnimalsNode, Decl(strictAssignment1.ts, 32, 39))
+>animals : Symbol(animals, Decl(strictAssignment1.ts, 68, 49))
+>cats : Symbol(cats, Decl(strictAssignment1.ts, 6, 9))
+    
+    const animalsNode9: Readonly<ReadonlyAnimalsNode> = { animals: cats };
+>animalsNode9 : Symbol(animalsNode9, Decl(strictAssignment1.ts, 70, 9))
+>Readonly : Symbol(Readonly, Decl(lib.es5.d.ts, --, --))
+>ReadonlyAnimalsNode : Symbol(ReadonlyAnimalsNode, Decl(strictAssignment1.ts, 33, 45))
+>animals : Symbol(animals, Decl(strictAssignment1.ts, 70, 57))
+>cats : Symbol(cats, Decl(strictAssignment1.ts, 6, 9))
+}
+

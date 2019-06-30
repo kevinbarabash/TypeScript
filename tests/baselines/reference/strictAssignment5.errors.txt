@@ -1,0 +1,46 @@
+tests/cases/compiler/strictAssignment5.tsx(20,6): error TS2322: Type '{ animals: Cat[]; }' is not assignable to type 'Readonly<Props>'.
+  Types of property 'animals' are incompatible.
+    Type 'Cat[]' is not assignable to type 'Animal[]'. Covariant assignment of aliases to non-readonly targets are unsafe.
+
+
+==== tests/cases/compiler/strictAssignment5.tsx (1 errors) ====
+    /// <reference path="/.lib/react16.d.ts" />
+    import React from "react";
+    
+    module StrictAssignment5 {
+        class Animal {}
+        class Cat { purr() {} }
+        class Dog { bark() {} }
+    
+        type Props = {
+            animals: Animal[],
+        };
+    
+        class Foo extends React.Component<Props> {
+            render() {
+                return "foo";
+            }
+        }
+    
+        const cats: Cat[] = [new Cat];
+        <Foo animals={cats} />; // error
+         ~~~
+!!! error TS2322: Type '{ animals: Cat[]; }' is not assignable to type 'Readonly<Props>'.
+!!! error TS2322:   Types of property 'animals' are incompatible.
+!!! error TS2322:     Type 'Cat[]' is not assignable to type 'Animal[]'. Covariant assignment of aliases to non-readonly targets are unsafe.
+!!! related TS2728 tests/cases/compiler/strictAssignment5.tsx:6:17: 'purr' is declared here.
+        <Foo animals={[new Cat]} />; // okay
+        
+        type ReadonlyProps = {
+            animals: ReadonlyArray<Animal>,
+        };
+    
+        class Bar extends React.Component<ReadonlyProps> {
+            render() {
+                return "foo";
+            }
+        }
+    
+        <Bar animals={cats} />; // okay
+    }
+    

@@ -1,0 +1,83 @@
+=== tests/cases/compiler/strictAssignment4.ts ===
+module StrictAssignment4 {
+>StrictAssignment4 : typeof StrictAssignment4
+
+    class Animal {}
+>Animal : Animal
+
+    class Cat { purr() {} }
+>Cat : Cat
+>purr : () => void
+
+    class Dog { bark() {} }
+>Dog : Dog
+>bark : () => void
+    
+    const cats: Cat[] = [new Cat];
+>cats : Cat[]
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+    
+    function foo(animals: Cat[]): void
+>foo : (animals: Cat[]) => void
+>animals : Cat[]
+
+    function foo(animals: Animal[]): void {
+>foo : (animals: Cat[]) => void
+>animals : Animal[]
+    }
+    foo(cats); // okay, because there's a safe overload
+>foo(cats) : void
+>foo : (animals: Cat[]) => void
+>cats : Cat[]
+
+    foo([new Cat]); // okay, because there's a safe overload
+>foo([new Cat]) : void
+>foo : (animals: Cat[]) => void
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+
+    function oof(animals: Animal[]): void 
+>oof : (animals: Animal[]) => void
+>animals : Animal[]
+
+    function oof(animals: Cat[]): void {
+>oof : (animals: Animal[]) => void
+>animals : Cat[]
+    }
+    // TODO: make it so this isn't an error
+    oof(cats); // okay, because there's a safe overload
+>oof(cats) : void
+>oof : (animals: Animal[]) => void
+>cats : Cat[]
+
+    oof([new Cat]); // okay, because there's a safe overload
+>oof([new Cat]) : void
+>oof : (animals: Animal[]) => void
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+
+    function bar(animals: Dog[]): void
+>bar : (animals: Dog[]) => void
+>animals : Dog[]
+
+    function bar(animals: Animal[]): void {
+>bar : (animals: Dog[]) => void
+>animals : Animal[]
+    }
+    bar(cats); // error, there's no safe overload
+>bar(cats) : void
+>bar : (animals: Dog[]) => void
+>cats : Cat[]
+
+    bar([new Cat]); // error, there's no safe overload
+>bar([new Cat]) : void
+>bar : (animals: Dog[]) => void
+>[new Cat] : Cat[]
+>new Cat : Cat
+>Cat : typeof Cat
+}
+

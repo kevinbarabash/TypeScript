@@ -503,6 +503,14 @@ namespace ts {
             category: Diagnostics.Additional_Checks,
             description: Diagnostics.Report_errors_for_fallthrough_cases_in_switch_statement
         },
+        {
+            name: "strictAssignment",
+            type: "boolean",
+            affectsSemanticDiagnostics: true,
+            showInSimplifiedHelpView: true,
+            category: Diagnostics.Additional_Checks,
+            description: Diagnostics.Enable_strict_checking_of_assignments
+        },
 
         // Module Resolution
         {
