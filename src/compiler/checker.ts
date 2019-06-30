@@ -11675,9 +11675,19 @@ namespace ts {
         function checkTypeAssignableToAndOptionallyElaborate(source: Type, target: Type, errorNode: Node | undefined, expr: Expression | undefined, headMessage?: DiagnosticMessage, containingMessageChain?: () => DiagnosticMessageChain | undefined): boolean {
             const targetName = (target.aliasSymbol && symbolName(target.aliasSymbol)) || (target.symbol && symbolName(target.symbol));
             const isTargetReadonly = contains(["Readonly", "ReadonlyArray", "ReadonlyMap", "ReadonlySet"], targetName);
+
+            let useStrictAssignment = strictAssignment;
+            // TODO: handle symbolAlias if it exists
+            if (target.symbol) {
+                const targetFile = getSourceFileOfNode(target.symbol.declarations[0]);
+                if (targetFile && targetFile.isDeclarationFile) {
+                    useStrictAssignment = targetFile.pragmas.has("strict-assignment");
+                }
+            }
+
             // We determine what the override variance should be.  If the source is an identifier and if the target
             // is readonly, then we force the assignment to be invariant.
-            const assignmentVariance = strictAssignment && expr && isIdentifier(expr) && !isTargetReadonly
+            const assignmentVariance = useStrictAssignment && expr && isIdentifier(expr) && !isTargetReadonly
                 ? VarianceFlags.Invariant
                 : undefined;
             return checkTypeRelatedToAndOptionallyElaborate(source, target, assignableRelation, errorNode, expr, headMessage, containingMessageChain, assignmentVariance);
@@ -13613,7 +13623,16 @@ namespace ts {
             function propertyRelatedTo(source: Type, target: Type, sourceProp: Symbol, targetProp: Symbol, getTypeOfSourceProperty: (sym: Symbol) => Type, reportErrors: boolean): Ternary {
                 let assignmentVariance;
 
-                if (strictAssignment && sourceProp.valueDeclaration) {
+                let useStrictAssignment = strictAssignment;
+                // TODO: handle symbolAlias if it exists
+                if (target.symbol) {
+                    const targetFile = getSourceFileOfNode(target.symbol.declarations[0]);
+                    if (targetFile && targetFile.isDeclarationFile) {
+                        useStrictAssignment = targetFile.pragmas.has("strict-assignment");
+                    }
+                }
+
+                if (useStrictAssignment && sourceProp.valueDeclaration) {
                     const {aliasSymbol, symbol} = getTypeOfSymbol(targetProp);
                     const propEscapedName = (aliasSymbol && symbolName(aliasSymbol)) || (symbol && symbolName(symbol));
                     const targetPropIsReadonly = contains(["Readonly", "ReadonlyArray", "ReadonlyMap", "ReadonlySet"], propEscapedName);
@@ -21176,6 +21195,13 @@ namespace ts {
             for (let i = 0; i < argCount; i++) {
                 const arg = args[i];
                 if (arg.kind !== SyntaxKind.OmittedExpression) {
+                    let useStrictAssignment = strictAssignment;
+
+                    const sourceFile = getSourceFileOfNode(signature.declaration);
+                    if (sourceFile && sourceFile.isDeclarationFile) {
+                        useStrictAssignment = sourceFile.pragmas.has("strict-assignment");
+                    }
+                    
                     const paramType = getTypeAtPosition(signature, i);
                     const argType = checkExpressionWithContextualType(arg, paramType, /*inferenceContext*/ undefined, checkMode);
                     // If one or more arguments are still excluded (as indicated by CheckMode.SkipContextSensitive),
@@ -21185,7 +21211,7 @@ namespace ts {
 
                     // type checking an arg for a param that isn't readonly is invariant
                     const paramIsReadonly = !!(getObjectFlags(paramType) & ObjectFlags.Mapped && (<MappedType>paramType).declaration.readonlyToken);
-                    const assignmentVariance = strictAssignment && arg && isIdentifier(arg) && !paramIsReadonly
+                    const assignmentVariance = useStrictAssignment && arg && isIdentifier(arg) && !paramIsReadonly
                         ? VarianceFlags.Invariant
                         : undefined;
                     if (!checkTypeRelatedToAndOptionallyElaborate(checkArgType, paramType, relation, reportErrors ? arg : undefined, arg, headMessage, /*containingMessageChain*/ undefined, assignmentVariance)) {

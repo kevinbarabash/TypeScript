@@ -6031,6 +6031,9 @@ namespace ts {
             args: [{ name: "factory" }],
             kind: PragmaKindFlags.MultiLine
         },
+        "strict-assignment": {
+            kind: PragmaKindFlags.SingleLine
+        },
     } as const;
 
     /* @internal */
