@@ -61,173 +61,7 @@ namespace ts {
         GeneratorYield,
     }
 
-    const enum TypeFacts {
-        None = 0,
-        TypeofEQString = 1 << 0,      // typeof x === "string"
-        TypeofEQNumber = 1 << 1,      // typeof x === "number"
-        TypeofEQBigInt = 1 << 2,      // typeof x === "bigint"
-        TypeofEQBoolean = 1 << 3,     // typeof x === "boolean"
-        TypeofEQSymbol = 1 << 4,      // typeof x === "symbol"
-        TypeofEQObject = 1 << 5,      // typeof x === "object"
-        TypeofEQFunction = 1 << 6,    // typeof x === "function"
-        TypeofEQHostObject = 1 << 7,  // typeof x === "xxx"
-        TypeofNEString = 1 << 8,      // typeof x !== "string"
-        TypeofNENumber = 1 << 9,      // typeof x !== "number"
-        TypeofNEBigInt = 1 << 10,     // typeof x !== "bigint"
-        TypeofNEBoolean = 1 << 11,     // typeof x !== "boolean"
-        TypeofNESymbol = 1 << 12,     // typeof x !== "symbol"
-        TypeofNEObject = 1 << 13,     // typeof x !== "object"
-        TypeofNEFunction = 1 << 14,   // typeof x !== "function"
-        TypeofNEHostObject = 1 << 15, // typeof x !== "xxx"
-        EQUndefined = 1 << 16,        // x === undefined
-        EQNull = 1 << 17,             // x === null
-        EQUndefinedOrNull = 1 << 18,  // x === undefined / x === null
-        NEUndefined = 1 << 19,        // x !== undefined
-        NENull = 1 << 20,             // x !== null
-        NEUndefinedOrNull = 1 << 21,  // x != undefined / x != null
-        Truthy = 1 << 22,             // x
-        Falsy = 1 << 23,              // !x
-        All = (1 << 24) - 1,
-        // The following members encode facts about particular kinds of types for use in the getTypeFacts function.
-        // The presence of a particular fact means that the given test is true for some (and possibly all) values
-        // of that kind of type.
-        BaseStringStrictFacts = TypeofEQString | TypeofNENumber | TypeofNEBigInt | TypeofNEBoolean | TypeofNESymbol | TypeofNEObject | TypeofNEFunction | TypeofNEHostObject | NEUndefined | NENull | NEUndefinedOrNull,
-        BaseStringFacts = BaseStringStrictFacts | EQUndefined | EQNull | EQUndefinedOrNull | Falsy,
-        StringStrictFacts = BaseStringStrictFacts | Truthy | Falsy,
-        StringFacts = BaseStringFacts | Truthy,
-        EmptyStringStrictFacts = BaseStringStrictFacts | Falsy,
-        EmptyStringFacts = BaseStringFacts,
-        NonEmptyStringStrictFacts = BaseStringStrictFacts | Truthy,
-        NonEmptyStringFacts = BaseStringFacts | Truthy,
-        BaseNumberStrictFacts = TypeofEQNumber | TypeofNEString | TypeofNEBigInt | TypeofNEBoolean | TypeofNESymbol | TypeofNEObject | TypeofNEFunction | TypeofNEHostObject | NEUndefined | NENull | NEUndefinedOrNull,
-        BaseNumberFacts = BaseNumberStrictFacts | EQUndefined | EQNull | EQUndefinedOrNull | Falsy,
-        NumberStrictFacts = BaseNumberStrictFacts | Truthy | Falsy,
-        NumberFacts = BaseNumberFacts | Truthy,
-        ZeroNumberStrictFacts = BaseNumberStrictFacts | Falsy,
-        ZeroNumberFacts = BaseNumberFacts,
-        NonZeroNumberStrictFacts = BaseNumberStrictFacts | Truthy,
-        NonZeroNumberFacts = BaseNumberFacts | Truthy,
-        BaseBigIntStrictFacts = TypeofEQBigInt | TypeofNEString | TypeofNENumber | TypeofNEBoolean | TypeofNESymbol | TypeofNEObject | TypeofNEFunction | TypeofNEHostObject | NEUndefined | NENull | NEUndefinedOrNull,
-        BaseBigIntFacts = BaseBigIntStrictFacts | EQUndefined | EQNull | EQUndefinedOrNull | Falsy,
-        BigIntStrictFacts = BaseBigIntStrictFacts | Truthy | Falsy,
-        BigIntFacts = BaseBigIntFacts | Truthy,
-        ZeroBigIntStrictFacts = BaseBigIntStrictFacts | Falsy,
-        ZeroBigIntFacts = BaseBigIntFacts,
-        NonZeroBigIntStrictFacts = BaseBigIntStrictFacts | Truthy,
-        NonZeroBigIntFacts = BaseBigIntFacts | Truthy,
-        BaseBooleanStrictFacts = TypeofEQBoolean | TypeofNEString | TypeofNENumber | TypeofNEBigInt | TypeofNESymbol | TypeofNEObject | TypeofNEFunction | TypeofNEHostObject | NEUndefined | NENull | NEUndefinedOrNull,
-        BaseBooleanFacts = BaseBooleanStrictFacts | EQUndefined | EQNull | EQUndefinedOrNull | Falsy,
-        BooleanStrictFacts = BaseBooleanStrictFacts | Truthy | Falsy,
-        BooleanFacts = BaseBooleanFacts | Truthy,
-        FalseStrictFacts = BaseBooleanStrictFacts | Falsy,
-        FalseFacts = BaseBooleanFacts,
-        TrueStrictFacts = BaseBooleanStrictFacts | Truthy,
-        TrueFacts = BaseBooleanFacts | Truthy,
-        SymbolStrictFacts = TypeofEQSymbol | TypeofNEString | TypeofNENumber | TypeofNEBigInt | TypeofNEBoolean | TypeofNEObject | TypeofNEFunction | TypeofNEHostObject | NEUndefined | NENull | NEUndefinedOrNull | Truthy,
-        SymbolFacts = SymbolStrictFacts | EQUndefined | EQNull | EQUndefinedOrNull | Falsy,
-        ObjectStrictFacts = TypeofEQObject | TypeofEQHostObject | TypeofNEString | TypeofNENumber | TypeofNEBigInt | TypeofNEBoolean | TypeofNESymbol | TypeofNEFunction | NEUndefined | NENull | NEUndefinedOrNull | Truthy,
-        ObjectFacts = ObjectStrictFacts | EQUndefined | EQNull | EQUndefinedOrNull | Falsy,
-        FunctionStrictFacts = TypeofEQFunction | TypeofEQHostObject | TypeofNEString | TypeofNENumber | TypeofNEBigInt | TypeofNEBoolean | TypeofNESymbol | TypeofNEObject | NEUndefined | NENull | NEUndefinedOrNull | Truthy,
-        FunctionFacts = FunctionStrictFacts | EQUndefined | EQNull | EQUndefinedOrNull | Falsy,
-        UndefinedFacts = TypeofNEString | TypeofNENumber | TypeofNEBigInt | TypeofNEBoolean | TypeofNESymbol | TypeofNEObject | TypeofNEFunction | TypeofNEHostObject | EQUndefined | EQUndefinedOrNull | NENull | Falsy,
-        NullFacts = TypeofEQObject | TypeofNEString | TypeofNENumber | TypeofNEBigInt | TypeofNEBoolean | TypeofNESymbol | TypeofNEFunction | TypeofNEHostObject | EQNull | EQUndefinedOrNull | NEUndefined | Falsy,
-        EmptyObjectStrictFacts = All & ~(EQUndefined | EQNull | EQUndefinedOrNull),
-        AllTypeofNE = TypeofNEString | TypeofNENumber | TypeofNEBigInt | TypeofNEBoolean | TypeofNESymbol | TypeofNEObject | TypeofNEFunction | NEUndefined,
-        EmptyObjectFacts = All,
-    }
-
-    const typeofEQFacts: ReadonlyESMap<string, TypeFacts> = new Map(getEntries({
-        string: TypeFacts.TypeofEQString,
-        number: TypeFacts.TypeofEQNumber,
-        bigint: TypeFacts.TypeofEQBigInt,
-        boolean: TypeFacts.TypeofEQBoolean,
-        symbol: TypeFacts.TypeofEQSymbol,
-        undefined: TypeFacts.EQUndefined,
-        object: TypeFacts.TypeofEQObject,
-        function: TypeFacts.TypeofEQFunction
-    }));
-
-    const typeofNEFacts: ReadonlyESMap<string, TypeFacts> = new Map(getEntries({
-        string: TypeFacts.TypeofNEString,
-        number: TypeFacts.TypeofNENumber,
-        bigint: TypeFacts.TypeofNEBigInt,
-        boolean: TypeFacts.TypeofNEBoolean,
-        symbol: TypeFacts.TypeofNESymbol,
-        undefined: TypeFacts.NEUndefined,
-        object: TypeFacts.TypeofNEObject,
-        function: TypeFacts.TypeofNEFunction
-    }));
-
     type TypeSystemEntity = Node | Symbol | Type | Signature;
-
-    const enum TypeSystemPropertyName {
-        Type,
-        ResolvedBaseConstructorType,
-        DeclaredType,
-        ResolvedReturnType,
-        ImmediateBaseConstraint,
-        EnumTagType,
-        ResolvedTypeArguments,
-        ResolvedBaseTypes,
-    }
-
-    const enum CheckMode {
-        Normal = 0,                     // Normal type checking
-        Contextual = 1 << 0,            // Explicitly assigned contextual type, therefore not cacheable
-        Inferential = 1 << 1,           // Inferential typing
-        SkipContextSensitive = 1 << 2,  // Skip context sensitive function expressions
-        SkipGenericFunctions = 1 << 3,  // Skip single signature generic functions
-        IsForSignatureHelp = 1 << 4,    // Call resolution for purposes of signature help
-    }
-
-    const enum AccessFlags {
-        None = 0,
-        NoIndexSignatures = 1 << 0,
-        Writing = 1 << 1,
-        CacheSymbol = 1 << 2,
-        NoTupleBoundsCheck = 1 << 3,
-        ExpressionPosition = 1 << 4,
-    }
-
-    const enum SignatureCheckMode {
-        BivariantCallback = 1 << 0,
-        StrictCallback    = 1 << 1,
-        IgnoreReturnTypes = 1 << 2,
-        StrictArity       = 1 << 3,
-        Callback          = BivariantCallback | StrictCallback,
-    }
-
-    const enum IntersectionState {
-        None = 0,
-        Source = 1 << 0,
-        Target = 1 << 1,
-        PropertyCheck = 1 << 2,
-        InPropertyCheck = 1 << 3,
-    }
-
-    const enum MappedTypeModifiers {
-        IncludeReadonly = 1 << 0,
-        ExcludeReadonly = 1 << 1,
-        IncludeOptional = 1 << 2,
-        ExcludeOptional = 1 << 3,
-    }
-
-    const enum ExpandingFlags {
-        None = 0,
-        Source = 1,
-        Target = 1 << 1,
-        Both = Source | Target,
-    }
-
-    const enum MembersOrExportsResolutionKind {
-        resolvedExports = "resolvedExports",
-        resolvedMembers = "resolvedMembers"
-    }
-
-    const enum UnusedKind {
-        Local,
-        Parameter,
-    }
 
     /** @param containingNode Node to check for parse error */
     type AddUnusedDiagnostic = (containingNode: Node, type: UnusedKind, diagnostic: DiagnosticWithLocation) => void;
@@ -270,10 +104,10 @@ namespace ts {
         Uncapitalize: IntrinsicTypeKind.Uncapitalize
     }));
 
-    function SymbolLinks(this: SymbolLinks) {
+    export function SymbolLinks(this: SymbolLinks) {
     }
 
-    function NodeLinks(this: NodeLinks) {
+    export function NodeLinks(this: NodeLinks) {
         this.flags = 0;
     }
 
@@ -326,19 +160,13 @@ namespace ts {
         let requestedExternalEmitHelpers: ExternalEmitHelpers;
         let externalHelpersModule: Symbol;
 
-        const Symbol = objectAllocator.getSymbolConstructor();
-        const Type = objectAllocator.getTypeConstructor();
         const Signature = objectAllocator.getSignatureConstructor();
 
-        let typeCount = 0;
-        let symbolCount = 0;
         let enumCount = 0;
         let totalInstantiationCount = 0;
         let instantiationCount = 0;
         let instantiationDepth = 0;
         let currentNode: Node | undefined;
-
-        const typeCatalog: Type[] = []; // NB: id is index + 1
 
         const emptySymbols = createSymbolTable();
         const arrayVariances = [VarianceFlags.Covariant];
@@ -359,18 +187,6 @@ namespace ts {
         const emitResolver = createResolver();
         const nodeBuilder = createNodeBuilder();
 
-        const globals = createSymbolTable();
-        const undefinedSymbol = createSymbol(SymbolFlags.Property, "undefined" as __String);
-        undefinedSymbol.declarations = [];
-
-        const globalThisSymbol = createSymbol(SymbolFlags.Module, "globalThis" as __String, CheckFlags.Readonly);
-        globalThisSymbol.exports = globals;
-        globalThisSymbol.declarations = [];
-        globals.set(globalThisSymbol.escapedName, globalThisSymbol);
-
-        const argumentsSymbol = createSymbol(SymbolFlags.Property, "arguments" as __String);
-        const requireSymbol = createSymbol(SymbolFlags.Property, "require" as __String);
-
         /** This will be set during calls to `getResolvedSignature` where services determines an apparent number of arguments greater than what is actually provided. */
         let apparentArgumentCount: number | undefined;
 
@@ -382,9 +198,9 @@ namespace ts {
         const checker: TypeChecker = {
             getNodeCount: () => sum(host.getSourceFiles(), "nodeCount"),
             getIdentifierCount: () => sum(host.getSourceFiles(), "identifierCount"),
-            getSymbolCount: () => sum(host.getSourceFiles(), "symbolCount") + symbolCount,
-            getTypeCatalog: () => typeCatalog,
-            getTypeCount: () => typeCount,
+            getSymbolCount: () => symbolsAndTypes.getSymbolCount(),
+            getTypeCatalog: () => symbolsAndTypes.getTypeCatalog(),
+            getTypeCount: () => symbolsAndTypes.getTypeCount(),
             getInstantiationCount: () => totalInstantiationCount,
             getRelationCacheSizes: () => ({
                 assignable: assignableRelation.size,
@@ -609,7 +425,7 @@ namespace ts {
             isTypeAssignableTo,
             createAnonymousType,
             createSignature,
-            createSymbol,
+            createSymbol: (flags: SymbolFlags, name: __String, checkFlags?: CheckFlags) => createSymbol(flags, name, checkFlags),
             createIndexInfo,
             getAnyType: () => anyType,
             getStringType: () => stringType,
@@ -709,6 +525,23 @@ namespace ts {
             isDeclarationVisible,
         };
 
+        const symbolsAndTypes = createSymbolsAndTypes(checker, host, getUnionType);
+
+        const {
+            createSymbol,
+            createType,
+            createObjectType,
+            createTypeofType,
+            createTypeParameter,
+            createLiteralType,
+            getLiteralType,
+            globals,
+            undefinedSymbol,
+            globalThisSymbol,
+            argumentsSymbol,
+            requireSymbol,
+        } = symbolsAndTypes;
+
         function getResolvedSignatureWorker(nodeIn: CallLikeExpression, candidatesOutArray: Signature[] | undefined, argumentCount: number | undefined, checkMode: CheckMode): Signature | undefined {
             const node = getParseTreeNode(nodeIn, isCallLikeExpression);
             apparentArgumentCount = argumentCount;
@@ -720,7 +553,6 @@ namespace ts {
         const tupleTypes = new Map<string, GenericType>();
         const unionTypes = new Map<string, UnionType>();
         const intersectionTypes = new Map<string, Type>();
-        const literalTypes = new Map<string, LiteralType>();
         const indexedAccessTypes = new Map<string, IndexedAccessType>();
         const templateLiteralTypes = new Map<string, TemplateLiteralType>();
         const stringMappingTypes = new Map<string, StringMappingType>();
@@ -731,51 +563,40 @@ namespace ts {
         const unknownSymbol = createSymbol(SymbolFlags.Property, "unknown" as __String);
         const resolvingSymbol = createSymbol(0, InternalSymbolName.Resolving);
 
-        const anyType = createIntrinsicType(TypeFlags.Any, "any");
-        const autoType = createIntrinsicType(TypeFlags.Any, "any");
-        const wildcardType = createIntrinsicType(TypeFlags.Any, "any");
-        const errorType = createIntrinsicType(TypeFlags.Any, "error");
-        const nonInferrableAnyType = createIntrinsicType(TypeFlags.Any, "any", ObjectFlags.ContainsWideningType);
-        const intrinsicMarkerType = createIntrinsicType(TypeFlags.Any, "intrinsic");
-        const unknownType = createIntrinsicType(TypeFlags.Unknown, "unknown");
-        const undefinedType = createIntrinsicType(TypeFlags.Undefined, "undefined");
-        const undefinedWideningType = strictNullChecks ? undefinedType : createIntrinsicType(TypeFlags.Undefined, "undefined", ObjectFlags.ContainsWideningType);
-        const optionalType = createIntrinsicType(TypeFlags.Undefined, "undefined");
-        const nullType = createIntrinsicType(TypeFlags.Null, "null");
-        const nullWideningType = strictNullChecks ? nullType : createIntrinsicType(TypeFlags.Null, "null", ObjectFlags.ContainsWideningType);
-        const stringType = createIntrinsicType(TypeFlags.String, "string");
-        const numberType = createIntrinsicType(TypeFlags.Number, "number");
-        const bigintType = createIntrinsicType(TypeFlags.BigInt, "bigint");
-        const falseType = createIntrinsicType(TypeFlags.BooleanLiteral, "false") as FreshableIntrinsicType;
-        const regularFalseType = createIntrinsicType(TypeFlags.BooleanLiteral, "false") as FreshableIntrinsicType;
-        const trueType = createIntrinsicType(TypeFlags.BooleanLiteral, "true") as FreshableIntrinsicType;
-        const regularTrueType = createIntrinsicType(TypeFlags.BooleanLiteral, "true") as FreshableIntrinsicType;
-        trueType.regularType = regularTrueType;
-        trueType.freshType = trueType;
-        regularTrueType.regularType = regularTrueType;
-        regularTrueType.freshType = trueType;
-        falseType.regularType = regularFalseType;
-        falseType.freshType = falseType;
-        regularFalseType.regularType = regularFalseType;
-        regularFalseType.freshType = falseType;
-        const booleanType = createBooleanType([regularFalseType, regularTrueType]);
-        // Also mark all combinations of fresh/regular booleans as "Boolean" so they print as `boolean` instead of `true | false`
-        // (The union is cached, so simply doing the marking here is sufficient)
-        createBooleanType([regularFalseType, trueType]);
-        createBooleanType([falseType, regularTrueType]);
-        createBooleanType([falseType, trueType]);
-        const esSymbolType = createIntrinsicType(TypeFlags.ESSymbol, "symbol");
-        const voidType = createIntrinsicType(TypeFlags.Void, "void");
-        const neverType = createIntrinsicType(TypeFlags.Never, "never");
-        const silentNeverType = createIntrinsicType(TypeFlags.Never, "never");
-        const nonInferrableType = createIntrinsicType(TypeFlags.Never, "never", ObjectFlags.NonInferrableType);
-        const implicitNeverType = createIntrinsicType(TypeFlags.Never, "never");
-        const unreachableNeverType = createIntrinsicType(TypeFlags.Never, "never");
-        const nonPrimitiveType = createIntrinsicType(TypeFlags.NonPrimitive, "object");
-        const stringNumberSymbolType = getUnionType([stringType, numberType, esSymbolType]);
-        const keyofConstraintType = keyofStringsOnly ? stringType : stringNumberSymbolType;
-        const numberOrBigIntType = getUnionType([numberType, bigintType]);
-        const templateConstraintType = getUnionType([stringType, numberType, booleanType, bigintType, nullType, undefinedType]) as UnionType;
+        const {
+            anyType,
+            autoType,
+            wildcardType,
+            errorType,
+            nonInferrableAnyType,
+            intrinsicMarkerType,
+            unknownType,
+            undefinedType,
+            undefinedWideningType,
+            optionalType,
+            nullType,
+            nullWideningType,
+            stringType,
+            numberType,
+            bigintType,
+            falseType,
+            regularFalseType,
+            trueType,
+            regularTrueType,
+            booleanType,
+            esSymbolType,
+            voidType,
+            neverType,
+            silentNeverType,
+            nonInferrableType,
+            implicitNeverType,
+            unreachableNeverType,
+            nonPrimitiveType,
+            stringNumberSymbolType,
+            keyofConstraintType,
+            numberOrBigIntType,
+            templateConstraintType,
+        } = symbolsAndTypes;
 
         const restrictiveMapper: TypeMapper = makeFunctionTypeMapper(t => t.flags & TypeFlags.TypeParameter ? getRestrictiveTypeParameter(<TypeParameter>t) : t);
         const permissiveMapper: TypeMapper = makeFunctionTypeMapper(t => t.flags & TypeFlags.TypeParameter ? wildcardType : t);
@@ -1118,13 +939,6 @@ namespace ts {
                 addRelatedInfo(diagnostic, related);
             }
             return diagnostic;
-        }
-
-        function createSymbol(flags: SymbolFlags, name: __String, checkFlags?: CheckFlags) {
-            symbolCount++;
-            const symbol = <TransientSymbol>(new Symbol(flags | SymbolFlags.Transient, name));
-            symbol.checkFlags = checkFlags || 0;
-            return symbol;
         }
 
         function getExcludedSymbolFlags(flags: SymbolFlags): SymbolFlags {
@@ -3732,51 +3546,6 @@ namespace ts {
                     return <ConstructorDeclaration>member;
                 }
             }
-        }
-
-        function createType(flags: TypeFlags): Type {
-            const result = new Type(checker, flags);
-            typeCount++;
-            result.id = typeCount;
-            typeCatalog.push(result);
-            return result;
-        }
-
-        function createIntrinsicType(kind: TypeFlags, intrinsicName: string, objectFlags: ObjectFlags = 0): IntrinsicType {
-            const type = <IntrinsicType>createType(kind);
-            type.intrinsicName = intrinsicName;
-            type.objectFlags = objectFlags;
-            return type;
-        }
-
-        function createBooleanType(trueFalseTypes: readonly Type[]): IntrinsicType & UnionType {
-            const type = <IntrinsicType & UnionType>getUnionType(trueFalseTypes);
-            type.flags |= TypeFlags.Boolean;
-            type.intrinsicName = "boolean";
-            return type;
-        }
-
-        function createObjectType(objectFlags: ObjectFlags, symbol?: Symbol): ObjectType {
-            const type = <ObjectType>createType(TypeFlags.Object);
-            type.objectFlags = objectFlags;
-            type.symbol = symbol!;
-            type.members = undefined;
-            type.properties = undefined;
-            type.callSignatures = undefined;
-            type.constructSignatures = undefined;
-            type.stringIndexInfo = undefined;
-            type.numberIndexInfo = undefined;
-            return type;
-        }
-
-        function createTypeofType() {
-            return getUnionType(arrayFrom(typeofEQFacts.keys(), getLiteralType));
-        }
-
-        function createTypeParameter(symbol?: Symbol) {
-            const type = <TypeParameter>createType(TypeFlags.TypeParameter);
-            if (symbol) type.symbol = symbol;
-            return type;
         }
 
         // A reserved member name starts with two underscores, but the third character cannot be an underscore,
@@ -14826,13 +14595,6 @@ namespace ts {
             return info && info.isReadonly !== readonly ? createIndexInfo(info.type, readonly, info.declaration) : info;
         }
 
-        function createLiteralType(flags: TypeFlags, value: string | number | PseudoBigInt, symbol: Symbol | undefined) {
-            const type = <LiteralType>createType(flags);
-            type.symbol = symbol!;
-            type.value = value;
-            return type;
-        }
-
         function getFreshTypeOfLiteralType(type: Type): Type {
             if (type.flags & TypeFlags.FreshableLiteral) {
                 if (!(<FreshableLiteralType>type).freshType) {
@@ -14856,26 +14618,6 @@ namespace ts {
 
         function isFreshLiteralType(type: Type) {
             return !!(type.flags & TypeFlags.FreshableLiteral) && (<FreshableLiteralType>type).freshType === type;
-        }
-
-        function getLiteralType(value: string): StringLiteralType;
-        function getLiteralType(value: string | number | PseudoBigInt, enumId?: number, symbol?: Symbol): LiteralType;
-        function getLiteralType(value: string | number | PseudoBigInt, enumId?: number, symbol?: Symbol) {
-            // We store all literal types in a single map with keys of the form '#NNN' and '@SSS',
-            // where NNN is the text representation of a numeric literal and SSS are the characters
-            // of a string literal. For literal enum members we use 'EEE#NNN' and 'EEE@SSS', where
-            // EEE is a unique id for the containing enum type.
-            const qualifier = typeof value === "number" ? "#" : typeof value === "string" ? "@" : "n";
-            const key = (enumId ? enumId : "") + qualifier + (typeof value === "object" ? pseudoBigIntToString(value) : value);
-            let type = literalTypes.get(key);
-            if (!type) {
-                const flags = (typeof value === "number" ? TypeFlags.NumberLiteral :
-                    typeof value === "string" ? TypeFlags.StringLiteral : TypeFlags.BigIntLiteral) |
-                    (enumId ? TypeFlags.EnumLiteral : 0);
-                literalTypes.set(key, type = createLiteralType(flags, value, symbol));
-                type.regularType = type;
-            }
-            return type;
         }
 
         function getTypeFromLiteralTypeNode(node: LiteralTypeNode): Type {
