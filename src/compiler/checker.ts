@@ -784,10 +784,10 @@ namespace ts {
         const circularConstraintType = createAnonymousType(undefined, emptySymbols, emptyArray, emptyArray, undefined, undefined);
         const resolvingDefaultType = createAnonymousType(undefined, emptySymbols, emptyArray, emptyArray, undefined, undefined);
 
-        const markerSuperType = createTypeParameter();
-        const markerSubType = createTypeParameter();
+        const markerSuperType = symbolsAndTypes.createTypeParameter();
+        const markerSubType = symbolsAndTypes.createTypeParameter();
         markerSubType.constraint = markerSuperType;
-        const markerOtherType = createTypeParameter();
+        const markerOtherType = symbolsAndTypes.createTypeParameter();
 
         const noTypePredicate = createTypePredicate(TypePredicateKind.Identifier, "<<unresolved>>", 0, anyType);
 
@@ -3725,27 +3725,8 @@ namespace ts {
             return type;
         }
 
-        function createObjectType(objectFlags: ObjectFlags, symbol?: Symbol): ObjectType {
-            const type = <ObjectType>symbolsAndTypes.createType(TypeFlags.Object);
-            type.objectFlags = objectFlags;
-            type.symbol = symbol!;
-            type.members = undefined;
-            type.properties = undefined;
-            type.callSignatures = undefined;
-            type.constructSignatures = undefined;
-            type.stringIndexInfo = undefined;
-            type.numberIndexInfo = undefined;
-            return type;
-        }
-
         function createTypeofType() {
             return getUnionType(arrayFrom(typeofEQFacts.keys(), getLiteralType));
-        }
-
-        function createTypeParameter(symbol?: Symbol) {
-            const type = <TypeParameter>symbolsAndTypes.createType(TypeFlags.TypeParameter);
-            if (symbol) type.symbol = symbol;
-            return type;
         }
 
         // A reserved member name starts with two underscores, but the third character cannot be an underscore,
@@ -3781,7 +3762,7 @@ namespace ts {
         }
 
         function createAnonymousType(symbol: Symbol | undefined, members: SymbolTable, callSignatures: readonly Signature[], constructSignatures: readonly Signature[], stringIndexInfo: IndexInfo | undefined, numberIndexInfo: IndexInfo | undefined): ResolvedType {
-            return setStructuredTypeMembers(createObjectType(ObjectFlags.Anonymous, symbol),
+            return setStructuredTypeMembers(symbolsAndTypes.createObjectType(ObjectFlags.Anonymous, symbol),
                 members, callSignatures, constructSignatures, stringIndexInfo, numberIndexInfo);
         }
 
@@ -8883,7 +8864,7 @@ namespace ts {
                     return type;
                 }
             }
-            const type = createObjectType(ObjectFlags.Anonymous, symbol);
+            const type = symbolsAndTypes.createObjectType(ObjectFlags.Anonymous, symbol);
             if (symbol.flags & SymbolFlags.Class) {
                 const baseTypeVariable = getBaseTypeVariableOfClass(symbol);
                 return baseTypeVariable ? getIntersectionType([type, baseTypeVariable]) : type;
@@ -9423,7 +9404,7 @@ namespace ts {
                     symbol = links = merged;
                 }
 
-                const type = originalLinks.declaredType = links.declaredType = <InterfaceType>createObjectType(kind, symbol);
+                const type = originalLinks.declaredType = links.declaredType = <InterfaceType>symbolsAndTypes.createObjectType(kind, symbol);
                 const outerTypeParameters = getOuterTypeParametersOfClassOrInterface(symbol);
                 const localTypeParameters = getLocalTypeParametersOfClassOrInterfaceOrTypeAlias(symbol);
                 // A class or interface is generic if it has type parameters or a "this" type. We always give classes a "this" type
@@ -9440,7 +9421,7 @@ namespace ts {
                     (<GenericType>type).instantiations.set(getTypeListId(type.typeParameters), <GenericType>type);
                     (<GenericType>type).target = <GenericType>type;
                     (<GenericType>type).resolvedTypeArguments = type.typeParameters;
-                    type.thisType = createTypeParameter(symbol);
+                    type.thisType = symbolsAndTypes.createTypeParameter(symbol);
                     type.thisType.isThisType = true;
                     type.thisType.constraint = type;
                 }
@@ -9583,7 +9564,7 @@ namespace ts {
 
         function getDeclaredTypeOfTypeParameter(symbol: Symbol): TypeParameter {
             const links = getSymbolLinks(symbol);
-            return links.declaredType || (links.declaredType = createTypeParameter(symbol));
+            return links.declaredType || (links.declaredType = symbolsAndTypes.createTypeParameter(symbol));
         }
 
         function getDeclaredTypeOfAlias(symbol: Symbol): Type {
@@ -12051,7 +12032,7 @@ namespace ts {
             if (!signature.isolatedSignatureType) {
                 const kind = signature.declaration ? signature.declaration.kind : SyntaxKind.Unknown;
                 const isConstructor = kind === SyntaxKind.Constructor || kind === SyntaxKind.ConstructSignature || kind === SyntaxKind.ConstructorType;
-                const type = createObjectType(ObjectFlags.Anonymous);
+                const type = symbolsAndTypes.createObjectType(ObjectFlags.Anonymous);
                 type.members = emptySymbols;
                 type.properties = emptyArray;
                 type.callSignatures = !isConstructor ? [signature] : emptyArray;
@@ -12231,7 +12212,7 @@ namespace ts {
             const id = getTypeListId(typeArguments);
             let type = target.instantiations.get(id);
             if (!type) {
-                type = <TypeReference>createObjectType(ObjectFlags.Reference, target.symbol);
+                type = <TypeReference>symbolsAndTypes.createObjectType(ObjectFlags.Reference, target.symbol);
                 target.instantiations.set(id, type);
                 type.objectFlags |= typeArguments ? getPropagatingFlagsOfTypes(typeArguments, /*excludeKinds*/ 0) : 0;
                 type.target = target;
@@ -12252,7 +12233,7 @@ namespace ts {
         function createDeferredTypeReference(target: GenericType, node: TypeReferenceNode | ArrayTypeNode | TupleTypeNode, mapper?: TypeMapper): DeferredTypeReference {
             const aliasSymbol = getAliasSymbolForTypeNode(node);
             const aliasTypeArguments = getTypeArgumentsForAliasSymbol(aliasSymbol);
-            const type = <DeferredTypeReference>createObjectType(ObjectFlags.Reference, target.symbol);
+            const type = <DeferredTypeReference>symbolsAndTypes.createObjectType(ObjectFlags.Reference, target.symbol);
             type.target = target;
             type.node = node;
             type.mapper = mapper;
@@ -12920,7 +12901,7 @@ namespace ts {
             if (arity) {
                 typeParameters = new Array(arity);
                 for (let i = 0; i < arity; i++) {
-                    const typeParameter = typeParameters[i] = createTypeParameter();
+                    const typeParameter = typeParameters[i] = symbolsAndTypes.createTypeParameter();
                     const flags = elementFlags[i];
                     combinedFlags |= flags;
                     if (!(combinedFlags & ElementFlags.Variable)) {
@@ -12943,7 +12924,7 @@ namespace ts {
                 lengthSymbol.type = getUnionType(literalTypes);
             }
             properties.push(lengthSymbol);
-            const type = <TupleType & InterfaceTypeWithDeclaredMembers>createObjectType(ObjectFlags.Tuple | ObjectFlags.Reference);
+            const type = <TupleType & InterfaceTypeWithDeclaredMembers>symbolsAndTypes.createObjectType(ObjectFlags.Tuple | ObjectFlags.Reference);
             type.typeParameters = typeParameters;
             type.outerTypeParameters = undefined;
             type.localTypeParameters = typeParameters;
@@ -12951,7 +12932,7 @@ namespace ts {
             type.instantiations.set(getTypeListId(type.typeParameters), <GenericType>type);
             type.target = <GenericType>type;
             type.resolvedTypeArguments = type.typeParameters;
-            type.thisType = createTypeParameter();
+            type.thisType = symbolsAndTypes.createTypeParameter();
             type.thisType.isThisType = true;
             type.thisType.constraint = type;
             type.declaredProperties = properties;
@@ -14328,7 +14309,7 @@ namespace ts {
         function getTypeFromMappedTypeNode(node: MappedTypeNode): Type {
             const links = getNodeLinks(node);
             if (!links.resolvedType) {
-                const type = <MappedType>createObjectType(ObjectFlags.Mapped, node.symbol);
+                const type = <MappedType>symbolsAndTypes.createObjectType(ObjectFlags.Mapped, node.symbol);
                 type.declaration = node;
                 type.aliasSymbol = getAliasSymbolForTypeNode(node);
                 type.aliasTypeArguments = getTypeArgumentsForAliasSymbol(type.aliasSymbol);
@@ -14578,7 +14559,7 @@ namespace ts {
                     links.resolvedType = emptyTypeLiteralType;
                 }
                 else {
-                    let type = createObjectType(ObjectFlags.Anonymous, node.symbol);
+                    let type = symbolsAndTypes.createObjectType(ObjectFlags.Anonymous, node.symbol);
                     type.aliasSymbol = aliasSymbol;
                     type.aliasTypeArguments = getTypeArgumentsForAliasSymbol(aliasSymbol);
                     if (isJSDocTypeLiteral(node) && node.isArrayType) {
@@ -15148,14 +15129,14 @@ namespace ts {
 
         function getRestrictiveTypeParameter(tp: TypeParameter) {
             return tp.constraint === unknownType ? tp : tp.restrictiveInstantiation || (
-                tp.restrictiveInstantiation = createTypeParameter(tp.symbol),
+                tp.restrictiveInstantiation = symbolsAndTypes.createTypeParameter(tp.symbol),
                 (tp.restrictiveInstantiation as TypeParameter).constraint = unknownType,
                 tp.restrictiveInstantiation
             );
         }
 
         function cloneTypeParameter(typeParameter: TypeParameter): TypeParameter {
-            const result = createTypeParameter(typeParameter.symbol);
+            const result = symbolsAndTypes.createTypeParameter(typeParameter.symbol);
             result.target = typeParameter;
             return result;
         }
@@ -15400,7 +15381,7 @@ namespace ts {
         }
 
         function instantiateAnonymousType(type: AnonymousType, mapper: TypeMapper): AnonymousType {
-            const result = <AnonymousType>createObjectType(type.objectFlags | ObjectFlags.Instantiated, type.symbol);
+            const result = <AnonymousType>symbolsAndTypes.createObjectType(type.objectFlags | ObjectFlags.Instantiated, type.symbol);
             if (type.objectFlags & ObjectFlags.Mapped) {
                 (<MappedType>result).declaration = (<MappedType>type).declaration;
                 // C.f. instantiateSignature
@@ -15633,7 +15614,7 @@ namespace ts {
             if (type.flags & TypeFlags.Object) {
                 const resolved = resolveStructuredTypeMembers(<ObjectType>type);
                 if (resolved.constructSignatures.length || resolved.callSignatures.length) {
-                    const result = createObjectType(ObjectFlags.Anonymous, type.symbol);
+                    const result = symbolsAndTypes.createObjectType(ObjectFlags.Anonymous, type.symbol);
                     result.members = resolved.members;
                     result.properties = resolved.properties;
                     result.callSignatures = emptyArray;
@@ -19955,7 +19936,7 @@ namespace ts {
             }
             // For all other object types we infer a new object type where the reverse mapping has been
             // applied to the type of each property.
-            const reversed = createObjectType(ObjectFlags.ReverseMapped | ObjectFlags.Anonymous, /*symbol*/ undefined) as ReverseMappedType;
+            const reversed = symbolsAndTypes.createObjectType(ObjectFlags.ReverseMapped | ObjectFlags.Anonymous, /*symbol*/ undefined) as ReverseMappedType;
             reversed.source = source;
             reversed.mappedType = target;
             reversed.constraintType = constraint;
@@ -21493,7 +21474,7 @@ namespace ts {
         // array types are ultimately converted into manifest array types (using getFinalArrayType)
         // and never escape the getFlowTypeOfReference function.
         function createEvolvingArrayType(elementType: Type): EvolvingArrayType {
-            const result = <EvolvingArrayType>createObjectType(ObjectFlags.EvolvingArray);
+            const result = <EvolvingArrayType>symbolsAndTypes.createObjectType(ObjectFlags.EvolvingArray);
             result.elementType = elementType;
             return result;
         }
@@ -31136,7 +31117,7 @@ namespace ts {
                 if (hasTypeParameterByName(context.inferredTypeParameters, name) || hasTypeParameterByName(result, name)) {
                     const newName = getUniqueTypeParameterName(concatenate(context.inferredTypeParameters, result), name);
                     const symbol = symbolsAndTypes.createSymbol(SymbolFlags.TypeParameter, newName);
-                    const newTypeParameter = createTypeParameter(symbol);
+                    const newTypeParameter = symbolsAndTypes.createTypeParameter(symbol);
                     newTypeParameter.target = tp;
                     oldTypeParameters = append(oldTypeParameters, tp);
                     newTypeParameters = append(newTypeParameters, newTypeParameter);
@@ -38864,7 +38845,7 @@ namespace ts {
             getSymbolLinks(symbolsAndTypes.undefinedSymbol).type = undefinedWideningType;
             getSymbolLinks(symbolsAndTypes.argumentsSymbol).type = getGlobalType("IArguments" as __String, /*arity*/ 0, /*reportErrors*/ true);
             getSymbolLinks(unknownSymbol).type = errorType;
-            getSymbolLinks(symbolsAndTypes.globalThisSymbol).type = createObjectType(ObjectFlags.Anonymous, symbolsAndTypes.globalThisSymbol);
+            getSymbolLinks(symbolsAndTypes.globalThisSymbol).type = symbolsAndTypes.createObjectType(ObjectFlags.Anonymous, symbolsAndTypes.globalThisSymbol);
 
             // Initialize special types
             globalArrayType = getGlobalType("Array" as __String, /*arity*/ 1, /*reportErrors*/ true);
