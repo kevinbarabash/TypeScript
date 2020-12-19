@@ -33,6 +33,7 @@
         "factory/emitNode.ts",
         "factory/emitHelpers.ts",
         "factory/nodeTests.ts",
+        "factory/symbolsAndTypes.ts",
         "factory/utilities.ts",
         "factory/utilitiesPublic.ts",
         "parser.ts",
