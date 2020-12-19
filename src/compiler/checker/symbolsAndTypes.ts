@@ -15,8 +15,6 @@ namespace ts {
         requireSymbol: TransientSymbol;
 
         createType(flags: TypeFlags): Type;
-        createIntrinsicType(kind: TypeFlags, intrinsicName: string, objectFlags?: ObjectFlags): IntrinsicType;
-        createBooleanType(trueFalseTypes: readonly Type[]): IntrinsicType & UnionType;
         createObjectType(objectFlags: ObjectFlags, symbol?: Symbol): ObjectType;
         createTypeofType(): Type;
         createTypeParameter(symbol?: Symbol): TypeParameter;
@@ -229,8 +227,6 @@ namespace ts {
             requireSymbol,
 
             createType,
-            createIntrinsicType,
-            createBooleanType,
             createObjectType,
             createTypeofType,
             createTypeParameter,
