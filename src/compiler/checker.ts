@@ -548,51 +548,40 @@ namespace ts {
         const unknownSymbol = symbolsAndTypes.createSymbol(SymbolFlags.Property, "unknown" as __String);
         const resolvingSymbol = symbolsAndTypes.createSymbol(0, InternalSymbolName.Resolving);
 
-        const anyType = createIntrinsicType(TypeFlags.Any, "any");
-        const autoType = createIntrinsicType(TypeFlags.Any, "any");
-        const wildcardType = createIntrinsicType(TypeFlags.Any, "any");
-        const errorType = createIntrinsicType(TypeFlags.Any, "error");
-        const nonInferrableAnyType = createIntrinsicType(TypeFlags.Any, "any", ObjectFlags.ContainsWideningType);
-        const intrinsicMarkerType = createIntrinsicType(TypeFlags.Any, "intrinsic");
-        const unknownType = createIntrinsicType(TypeFlags.Unknown, "unknown");
-        const undefinedType = createIntrinsicType(TypeFlags.Undefined, "undefined");
-        const undefinedWideningType = strictNullChecks ? undefinedType : createIntrinsicType(TypeFlags.Undefined, "undefined", ObjectFlags.ContainsWideningType);
-        const optionalType = createIntrinsicType(TypeFlags.Undefined, "undefined");
-        const nullType = createIntrinsicType(TypeFlags.Null, "null");
-        const nullWideningType = strictNullChecks ? nullType : createIntrinsicType(TypeFlags.Null, "null", ObjectFlags.ContainsWideningType);
-        const stringType = createIntrinsicType(TypeFlags.String, "string");
-        const numberType = createIntrinsicType(TypeFlags.Number, "number");
-        const bigintType = createIntrinsicType(TypeFlags.BigInt, "bigint");
-        const falseType = createIntrinsicType(TypeFlags.BooleanLiteral, "false") as FreshableIntrinsicType;
-        const regularFalseType = createIntrinsicType(TypeFlags.BooleanLiteral, "false") as FreshableIntrinsicType;
-        const trueType = createIntrinsicType(TypeFlags.BooleanLiteral, "true") as FreshableIntrinsicType;
-        const regularTrueType = createIntrinsicType(TypeFlags.BooleanLiteral, "true") as FreshableIntrinsicType;
-        trueType.regularType = regularTrueType;
-        trueType.freshType = trueType;
-        regularTrueType.regularType = regularTrueType;
-        regularTrueType.freshType = trueType;
-        falseType.regularType = regularFalseType;
-        falseType.freshType = falseType;
-        regularFalseType.regularType = regularFalseType;
-        regularFalseType.freshType = falseType;
-        const booleanType = symbolsAndTypes.createBooleanType([regularFalseType, regularTrueType]);
-        // Also mark all combinations of fresh/regular booleans as "Boolean" so they print as `boolean` instead of `true | false`
-        // (The union is cached, so simply doing the marking here is sufficient)
-        symbolsAndTypes.createBooleanType([regularFalseType, trueType]);
-        symbolsAndTypes.createBooleanType([falseType, regularTrueType]);
-        symbolsAndTypes.createBooleanType([falseType, trueType]);
-        const esSymbolType = createIntrinsicType(TypeFlags.ESSymbol, "symbol");
-        const voidType = createIntrinsicType(TypeFlags.Void, "void");
-        const neverType = createIntrinsicType(TypeFlags.Never, "never");
-        const silentNeverType = createIntrinsicType(TypeFlags.Never, "never");
-        const nonInferrableType = createIntrinsicType(TypeFlags.Never, "never", ObjectFlags.NonInferrableType);
-        const implicitNeverType = createIntrinsicType(TypeFlags.Never, "never");
-        const unreachableNeverType = createIntrinsicType(TypeFlags.Never, "never");
-        const nonPrimitiveType = createIntrinsicType(TypeFlags.NonPrimitive, "object");
-        const stringNumberSymbolType = getUnionType([stringType, numberType, esSymbolType]);
-        const keyofConstraintType = keyofStringsOnly ? stringType : stringNumberSymbolType;
-        const numberOrBigIntType = getUnionType([numberType, bigintType]);
-        const templateConstraintType = getUnionType([stringType, numberType, booleanType, bigintType, nullType, undefinedType]) as UnionType;
+        const {
+            anyType,
+            autoType,
+            wildcardType,
+            errorType,
+            nonInferrableAnyType,
+            intrinsicMarkerType,
+            unknownType,
+            undefinedType,
+            undefinedWideningType,
+            optionalType,
+            nullType,
+            nullWideningType,
+            stringType,
+            numberType,
+            bigintType,
+            falseType,
+            regularFalseType,
+            trueType,
+            regularTrueType,
+            booleanType,
+            esSymbolType,
+            voidType,
+            neverType,
+            silentNeverType,
+            nonInferrableType,
+            implicitNeverType,
+            unreachableNeverType,
+            nonPrimitiveType,
+            stringNumberSymbolType,
+            keyofConstraintType,
+            numberOrBigIntType,
+            templateConstraintType,
+        } = symbolsAndTypes;
 
         const restrictiveMapper: TypeMapper = makeFunctionTypeMapper(t => t.flags & TypeFlags.TypeParameter ? getRestrictiveTypeParameter(<TypeParameter>t) : t);
         const permissiveMapper: TypeMapper = makeFunctionTypeMapper(t => t.flags & TypeFlags.TypeParameter ? wildcardType : t);
@@ -3542,13 +3531,6 @@ namespace ts {
                     return <ConstructorDeclaration>member;
                 }
             }
-        }
-
-        function createIntrinsicType(kind: TypeFlags, intrinsicName: string, objectFlags: ObjectFlags = 0): IntrinsicType {
-            const type = <IntrinsicType>symbolsAndTypes.createType(kind);
-            type.intrinsicName = intrinsicName;
-            type.objectFlags = objectFlags;
-            return type;
         }
 
         // A reserved member name starts with two underscores, but the third character cannot be an underscore,

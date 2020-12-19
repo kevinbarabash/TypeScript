@@ -27,9 +27,47 @@ namespace ts {
 
         getTypeCatalog(): readonly Type[];
         getTypeCount(): number;
+
+        anyType: IntrinsicType;
+        autoType: IntrinsicType;
+        wildcardType: IntrinsicType;
+        errorType: IntrinsicType;
+        nonInferrableAnyType: IntrinsicType;
+        intrinsicMarkerType: IntrinsicType;
+        unknownType: IntrinsicType;
+        undefinedType: IntrinsicType;
+        undefinedWideningType: IntrinsicType;
+        optionalType: IntrinsicType;
+        nullType: IntrinsicType;
+        nullWideningType: IntrinsicType;
+        stringType: IntrinsicType;
+        numberType: IntrinsicType;
+        bigintType: IntrinsicType;
+        falseType: IntrinsicType;
+        regularFalseType: IntrinsicType;
+        trueType: IntrinsicType;
+        regularTrueType: IntrinsicType;
+        booleanType: IntrinsicType & UnionType;
+        esSymbolType: IntrinsicType;
+        voidType: IntrinsicType;
+        neverType: IntrinsicType;
+        silentNeverType: IntrinsicType;
+        nonInferrableType: IntrinsicType;
+        implicitNeverType: IntrinsicType;
+        unreachableNeverType: IntrinsicType;
+        nonPrimitiveType: IntrinsicType;
+        stringNumberSymbolType: Type;
+        keyofConstraintType: Type;
+        numberOrBigIntType: Type;
+        templateConstraintType: UnionType;
     }
 
     export function createSymbolsAndTypes(checker: TypeChecker, host: TypeCheckerHost, getUnionType: GetUnionType): SymbolsAndTypes {
+        const compilerOptions = host.getCompilerOptions();
+
+        const strictNullChecks = getStrictOptionValue(compilerOptions, "strictNullChecks");
+        const keyofStringsOnly = !!compilerOptions.keyofStringsOnly;
+
         const Symbol = objectAllocator.getSymbolConstructor();
         const Type = objectAllocator.getTypeConstructor();
 
@@ -39,6 +77,52 @@ namespace ts {
         const typeCatalog: Type[] = []; // NB: id is index + 1
 
         const literalTypes = new Map<string, LiteralType>();
+
+        const anyType = createIntrinsicType(TypeFlags.Any, "any");
+        const autoType = createIntrinsicType(TypeFlags.Any, "any");
+        const wildcardType = createIntrinsicType(TypeFlags.Any, "any");
+        const errorType = createIntrinsicType(TypeFlags.Any, "error");
+        const nonInferrableAnyType = createIntrinsicType(TypeFlags.Any, "any", ObjectFlags.ContainsWideningType);
+        const intrinsicMarkerType = createIntrinsicType(TypeFlags.Any, "intrinsic");
+        const unknownType = createIntrinsicType(TypeFlags.Unknown, "unknown");
+        const undefinedType = createIntrinsicType(TypeFlags.Undefined, "undefined");
+        const undefinedWideningType = strictNullChecks ? undefinedType : createIntrinsicType(TypeFlags.Undefined, "undefined", ObjectFlags.ContainsWideningType);
+        const optionalType = createIntrinsicType(TypeFlags.Undefined, "undefined");
+        const nullType = createIntrinsicType(TypeFlags.Null, "null");
+        const nullWideningType = strictNullChecks ? nullType : createIntrinsicType(TypeFlags.Null, "null", ObjectFlags.ContainsWideningType);
+        const stringType = createIntrinsicType(TypeFlags.String, "string");
+        const numberType = createIntrinsicType(TypeFlags.Number, "number");
+        const bigintType = createIntrinsicType(TypeFlags.BigInt, "bigint");
+        const falseType = createIntrinsicType(TypeFlags.BooleanLiteral, "false") as FreshableIntrinsicType;
+        const regularFalseType = createIntrinsicType(TypeFlags.BooleanLiteral, "false") as FreshableIntrinsicType;
+        const trueType = createIntrinsicType(TypeFlags.BooleanLiteral, "true") as FreshableIntrinsicType;
+        const regularTrueType = createIntrinsicType(TypeFlags.BooleanLiteral, "true") as FreshableIntrinsicType;
+        trueType.regularType = regularTrueType;
+        trueType.freshType = trueType;
+        regularTrueType.regularType = regularTrueType;
+        regularTrueType.freshType = trueType;
+        falseType.regularType = regularFalseType;
+        falseType.freshType = falseType;
+        regularFalseType.regularType = regularFalseType;
+        regularFalseType.freshType = falseType;
+        const booleanType = createBooleanType([regularFalseType, regularTrueType]);
+        // Also mark all combinations of fresh/regular booleans as "Boolean" so they print as `boolean` instead of `true | false`
+        // (The union is cached, so simply doing the marking here is sufficient)
+        createBooleanType([regularFalseType, trueType]);
+        createBooleanType([falseType, regularTrueType]);
+        createBooleanType([falseType, trueType]);
+        const esSymbolType = createIntrinsicType(TypeFlags.ESSymbol, "symbol");
+        const voidType = createIntrinsicType(TypeFlags.Void, "void");
+        const neverType = createIntrinsicType(TypeFlags.Never, "never");
+        const silentNeverType = createIntrinsicType(TypeFlags.Never, "never");
+        const nonInferrableType = createIntrinsicType(TypeFlags.Never, "never", ObjectFlags.NonInferrableType);
+        const implicitNeverType = createIntrinsicType(TypeFlags.Never, "never");
+        const unreachableNeverType = createIntrinsicType(TypeFlags.Never, "never");
+        const nonPrimitiveType = createIntrinsicType(TypeFlags.NonPrimitive, "object");
+        const stringNumberSymbolType = getUnionType([stringType, numberType, esSymbolType]);
+        const keyofConstraintType = keyofStringsOnly ? stringType : stringNumberSymbolType;
+        const numberOrBigIntType = getUnionType([numberType, bigintType]);
+        const templateConstraintType = getUnionType([stringType, numberType, booleanType, bigintType, nullType, undefinedType]) as UnionType;
 
         function createSymbol(flags: SymbolFlags, name: __String, checkFlags?: CheckFlags) {
             symbolCount++;
@@ -156,6 +240,39 @@ namespace ts {
 
             getTypeCatalog: () => typeCatalog,
             getTypeCount: () => typeCount,
+
+            anyType,
+            autoType,
+            wildcardType,
+            errorType,
+            nonInferrableAnyType,
+            intrinsicMarkerType,
+            unknownType,
+            undefinedType,
+            undefinedWideningType,
+            optionalType,
+            nullType,
+            nullWideningType,
+            stringType,
+            numberType,
+            bigintType,
+            falseType,
+            regularFalseType,
+            trueType,
+            regularTrueType,
+            booleanType,
+            esSymbolType,
+            voidType,
+            neverType,
+            silentNeverType,
+            nonInferrableType,
+            implicitNeverType,
+            unreachableNeverType,
+            nonPrimitiveType,
+            stringNumberSymbolType,
+            keyofConstraintType,
+            numberOrBigIntType,
+            templateConstraintType,
         };
     }
 }
