@@ -525,7 +525,7 @@ namespace ts {
             isDeclarationVisible,
         };
 
-        const symbolsAndTypes = createSymbolsAndTypes(checker, host);
+        const symbolsAndTypes = createSymbolsAndTypes(checker, host, getUnionType);
 
         function getResolvedSignatureWorker(nodeIn: CallLikeExpression, candidatesOutArray: Signature[] | undefined, argumentCount: number | undefined, checkMode: CheckMode): Signature | undefined {
             const node = getParseTreeNode(nodeIn, isCallLikeExpression);
@@ -575,12 +575,12 @@ namespace ts {
         falseType.freshType = falseType;
         regularFalseType.regularType = regularFalseType;
         regularFalseType.freshType = falseType;
-        const booleanType = symbolsAndTypes.createBooleanType([regularFalseType, regularTrueType], getUnionType);
+        const booleanType = symbolsAndTypes.createBooleanType([regularFalseType, regularTrueType]);
         // Also mark all combinations of fresh/regular booleans as "Boolean" so they print as `boolean` instead of `true | false`
         // (The union is cached, so simply doing the marking here is sufficient)
-        symbolsAndTypes.createBooleanType([regularFalseType, trueType], getUnionType);
-        symbolsAndTypes.createBooleanType([falseType, regularTrueType], getUnionType);
-        symbolsAndTypes.createBooleanType([falseType, trueType], getUnionType);
+        symbolsAndTypes.createBooleanType([regularFalseType, trueType]);
+        symbolsAndTypes.createBooleanType([falseType, regularTrueType]);
+        symbolsAndTypes.createBooleanType([falseType, trueType]);
         const esSymbolType = createIntrinsicType(TypeFlags.ESSymbol, "symbol");
         const voidType = createIntrinsicType(TypeFlags.Void, "void");
         const neverType = createIntrinsicType(TypeFlags.Never, "never");
@@ -784,7 +784,7 @@ namespace ts {
             symbol: esSymbolType,
             undefined: undefinedType
         }));
-        const typeofType = symbolsAndTypes.createTypeofType(getUnionType);
+        const typeofType = symbolsAndTypes.createTypeofType();
 
         let _jsxNamespace: __String;
         let _jsxFactoryEntity: EntityName | undefined;

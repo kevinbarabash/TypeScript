@@ -16,9 +16,9 @@ namespace ts {
 
         createType(flags: TypeFlags): Type;
         createIntrinsicType(kind: TypeFlags, intrinsicName: string, objectFlags?: ObjectFlags): IntrinsicType;
-        createBooleanType(trueFalseTypes: readonly Type[], getUnionType: GetUnionType): IntrinsicType & UnionType;
+        createBooleanType(trueFalseTypes: readonly Type[]): IntrinsicType & UnionType;
         createObjectType(objectFlags: ObjectFlags, symbol?: Symbol): ObjectType;
-        createTypeofType(getUnionType: GetUnionType): Type;
+        createTypeofType(): Type;
         createTypeParameter(symbol?: Symbol): TypeParameter;
         createLiteralType(flags: TypeFlags, value: string | number | PseudoBigInt, symbol: Symbol | undefined): LiteralType;
 
@@ -29,7 +29,7 @@ namespace ts {
         getTypeCount(): number;
     }
 
-    export function createSymbolsAndTypes(checker: TypeChecker, host: TypeCheckerHost): SymbolsAndTypes {
+    export function createSymbolsAndTypes(checker: TypeChecker, host: TypeCheckerHost, getUnionType: GetUnionType): SymbolsAndTypes {
         const Symbol = objectAllocator.getSymbolConstructor();
         const Type = objectAllocator.getTypeConstructor();
 
@@ -75,7 +75,7 @@ namespace ts {
             return type;
         }
 
-        function createBooleanType(trueFalseTypes: readonly Type[], getUnionType: GetUnionType): IntrinsicType & UnionType {
+        function createBooleanType(trueFalseTypes: readonly Type[]): IntrinsicType & UnionType {
             const type = <IntrinsicType & UnionType>getUnionType(trueFalseTypes);
             type.flags |= TypeFlags.Boolean;
             type.intrinsicName = "boolean";
@@ -95,7 +95,7 @@ namespace ts {
             return type;
         }
 
-        function createTypeofType(getUnionType: GetUnionType) {
+        function createTypeofType() {
             return getUnionType(arrayFrom(typeofEQFacts.keys(), getLiteralType));
         }
 
